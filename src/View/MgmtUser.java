@@ -49,7 +49,7 @@ public class MgmtUser extends javax.swing.JPanel {
         for(int nCtr = 0; nCtr < users.size(); nCtr++){
             tableModel.addRow(new Object[]{
                 users.get(nCtr).getUsername(), 
-                users.get(nCtr).getPassword(), 
+                "********", 
                 users.get(nCtr).getRole(), 
                 users.get(nCtr).getLocked()});
         }
@@ -222,20 +222,33 @@ public class MgmtUser extends javax.swing.JPanel {
 
     private void chgpassBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chgpassBtnActionPerformed
         if(table.getSelectedRow() >= 0){
+            JTextField current = new JPasswordField();
             JTextField password = new JPasswordField();
             JTextField confpass = new JPasswordField();
-            designer(password, "PASSWORD");
-            designer(confpass, "CONFIRM PASSWORD");
+            designer(current, "YOUR CURRENT PASSWORD");
+            designer(password, "NEW PASSWORD");
+            designer(confpass, "CONFIRM NEW PASSWORD");
             
+            String target = tableModel.getValueAt(table.getSelectedRow(), 0).toString();
             Object[] message = {
-                "Enter New Password:", password, confpass
+                "Change password for " + target + ":", current, password, confpass
             };
 
             int result = JOptionPane.showConfirmDialog(null, message, "CHANGE PASSWORD", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
             
             if (result == JOptionPane.OK_OPTION) {
-                System.out.println(password.getText());
-                System.out.println(confpass.getText());
+                char[] c = ((JPasswordField) current).getPassword();
+                char[] n = ((JPasswordField) password).getPassword();
+                char[] f = ((JPasswordField) confpass).getPassword();
+                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                String error = (w instanceof View.Frame)
+                        ? ((View.Frame) w).changeUserPassword(target, c, n, f)
+                        : Controller.AuthService.GENERIC_ERROR;
+                java.util.Arrays.fill(c, '\0');
+                java.util.Arrays.fill(n, '\0');
+                java.util.Arrays.fill(f, '\0');
+                JOptionPane.showMessageDialog(null, error == null ? "Password changed successfully." : error,
+                        "CHANGE PASSWORD", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
             }
         }
     }//GEN-LAST:event_chgpassBtnActionPerformed

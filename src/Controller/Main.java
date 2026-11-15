@@ -23,6 +23,11 @@ public class Main {
     public void init(){
         // Initialize a driver object
         sqlite = new SQLite();
+        
+        sqlite.createLogsTable();
+        sqlite.initUsersSchema();
+        SecurityLogger.init(sqlite);
+        AuthService.seedDefaultAccountsIfEmpty(sqlite);
 
 //        // Create a database
 //        sqlite.createNewDatabase();

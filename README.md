@@ -36,3 +36,16 @@ On Linux (Fedora), run the following command:
 sudo dnf install sqlite sqlite-tools sqlite-analyzer
 ```
 
+## Demo accounts
+
+Created automatically on first run (stored as salted PBKDF2 hashes in `database.db`).
+
+| Username | Password | Role |
+| :--- | :--- | :---: |
+| admin | Admin#2026! | 5 (Administrator) |
+| manager | Manager#2026! | 4 (Manager) |
+| staff | Staff#2026! | 3 (Staff) |
+| client1 | Client#2026! | 2 (Client) |
+| client2 | Client#2027! | 2 (Client) |
+
+Five consecutive failed logins move an account to Role 1 (Disabled).

@@ -1,6 +1,8 @@
 package View;
 
+import Controller.AuthService;
 import Controller.Main;
+import Model.User;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
@@ -200,10 +202,12 @@ public class Frame extends javax.swing.JFrame {
     }//GEN-LAST:event_clientBtnActionPerformed
 
     private void logoutBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutBtnActionPerformed
-        frameView.show(Container, "loginPnl");
+        logout();
     }//GEN-LAST:event_logoutBtnActionPerformed
 
     public Main main;
+    public User currentUser;
+    private AuthService auth;
     public Login loginPnl = new Login();
     public Register registerPnl = new Register();
     
@@ -221,6 +225,7 @@ public class Frame extends javax.swing.JFrame {
         this.setLocationRelativeTo(null);
         
         this.main = controller;
+        this.auth = new AuthService(main.sqlite);
         loginPnl.frame = this;
         registerPnl.frame = this;
         
@@ -245,10 +250,15 @@ public class Frame extends javax.swing.JFrame {
     }
     
     public void mainNav(){
+        if (currentUser == null) {
+            loginNav();
+            return;
+        }
         frameView.show(Container, "homePnl");
     }
     
     public void loginNav(){
+        loginPnl.clearFields();
         frameView.show(Container, "loginPnl");
     }
     
@@ -256,8 +266,50 @@ public class Frame extends javax.swing.JFrame {
         frameView.show(Container, "registerPnl");
     }
     
-    public void registerAction(String username, String password, String confpass){
-        main.sqlite.addUser(username, password);
+    public void logout(){
+        currentUser = null;
+        loginNav();
+    }
+    
+    public boolean loginAction(String username, char[] password){
+        AuthService.LoginResult r = auth.login(username, password);
+        if (!r.success) {
+            javax.swing.JOptionPane.showMessageDialog(this, AuthService.GENERIC_LOGIN_ERROR,
+                    "Login Failed", javax.swing.JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        currentUser = r.user;
+        mainNav();
+        String info = (r.lastAttempt == null)
+                ? "This is your first login."
+                : "Last login attempt: " + r.lastAttempt + "\nStatus: " + r.lastStatus;
+        javax.swing.JOptionPane.showMessageDialog(this, info,
+                "Welcome, " + r.user.getUsername(), javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        return true;
+    }
+    
+    public boolean registerAction(String username, char[] password, char[] confpass){
+        String error = auth.register(username, password, confpass);
+        if (error != null) {
+            javax.swing.JOptionPane.showMessageDialog(this, error,
+                    "Registration", javax.swing.JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        javax.swing.JOptionPane.showMessageDialog(this, "Account created. You can now log in.",
+                "Registration", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        return true;
+    }
+    
+    public String changeUserPassword(String targetUsername, char[] currentPw, char[] newPw, char[] confirm){
+        if (currentUser == null) {
+            loginNav();
+            return AuthService.GENERIC_ERROR;
+        }
+        String error = auth.changePasswordFor(currentUser, targetUsername, currentPw, newPw, confirm);
+        if (error != null && auth.isAccountDisabled(currentUser.getUsername())) {
+            logout();
+        }
+        return error;
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

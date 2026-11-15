@@ -6,6 +6,10 @@ public class User {
     private String password;
     private int role = 2;
     private int locked = 0;
+    private String salt;
+    private int failedAttempts = 0;
+    private String lastAttempt;
+    private String lastStatus;
 
     public User(String username, String password){
         this.username = username;
@@ -19,6 +23,24 @@ public class User {
         this.role = role;
         this.locked = locked;
     }
+    
+    public User(int id, String username, String password, int role, int locked,
+            String salt, int failedAttempts, String lastAttempt, String lastStatus){
+        this(id, username, password, role, locked);
+        this.salt = salt;
+        this.failedAttempts = failedAttempts;
+        this.lastAttempt = lastAttempt;
+        this.lastStatus = lastStatus;
+    }
+    
+    public String getSalt() { return salt; }
+    public void setSalt(String salt) { this.salt = salt; }
+    public int getFailedAttempts() { return failedAttempts; }
+    public void setFailedAttempts(int failedAttempts) { this.failedAttempts = failedAttempts; }
+    public String getLastAttempt() { return lastAttempt; }
+    public void setLastAttempt(String lastAttempt) { this.lastAttempt = lastAttempt; }
+    public String getLastStatus() { return lastStatus; }
+    public void setLastStatus(String lastStatus) { this.lastStatus = lastStatus; }
     
     public int getId() {
         return id;

@@ -7,7 +7,9 @@ import Model.User;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
@@ -86,7 +88,11 @@ public class SQLite {
             + " username TEXT NOT NULL UNIQUE,\n"
             + " password TEXT NOT NULL,\n"
             + " role INTEGER DEFAULT 2,\n"
-            + " locked INTEGER DEFAULT 0\n"
+            + " locked INTEGER DEFAULT 0,\n"
+            + " salt TEXT,\n"
+            + " failed_attempts INTEGER DEFAULT 0,\n"
+            + " last_attempt TEXT,\n"
+            + " last_status TEXT\n"
             + ");";
 
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -158,13 +164,16 @@ public class SQLite {
     }
     
     public void addLogs(String event, String username, String desc, String timestamp) {
-        String sql = "INSERT INTO logs(event,username,desc,timestamp) VALUES('" + event + "','" + username + "','" + desc + "','" + timestamp + "')";
+        String sql = "INSERT INTO logs(event,username,desc,timestamp) VALUES(?,?,?,?)";
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, event);
+            pstmt.setString(2, username);
+            pstmt.setString(3, desc);
+            pstmt.setString(4, timestamp);
+            pstmt.executeUpdate();
         } catch (Exception ex) {
-            System.out.print(ex);
         }
     }
     
@@ -178,25 +187,6 @@ public class SQLite {
             System.out.print(ex);
         }
     }
-    
-    public void addUser(String username, String password) {
-        String sql = "INSERT INTO users(username,password) VALUES('" + username + "','" + password + "')";
-        
-        try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
-            
-//      PREPARED STATEMENT EXAMPLE
-//      String sql = "INSERT INTO users(username,password) VALUES(?,?)";
-//      PreparedStatement pstmt = conn.prepareStatement(sql)) {
-//      pstmt.setString(1, username);
-//      pstmt.setString(2, password);
-//      pstmt.executeUpdate();
-        } catch (Exception ex) {
-            System.out.print(ex);
-        }
-    }
-    
     
     public ArrayList<History> getHistory(){
         String sql = "SELECT id, username, name, stock, timestamp FROM history";
@@ -260,47 +250,138 @@ public class SQLite {
         return products;
     }
     
+    private User mapUser(ResultSet rs) throws SQLException {
+        return new User(rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getInt("role"),
+                        rs.getInt("locked"),
+                        rs.getString("salt"),
+                        rs.getInt("failed_attempts"),
+                        rs.getString("last_attempt"),
+                        rs.getString("last_status"));
+    }
+    
+    private static final String USER_COLS =
+        "id, username, password, role, locked, salt, failed_attempts, last_attempt, last_status";
+    
     public ArrayList<User> getUsers(){
-        String sql = "SELECT id, username, password, role, locked FROM users";
+        String sql = "SELECT " + USER_COLS + " FROM users";
         ArrayList<User> users = new ArrayList<User>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
-            
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery()){
             while (rs.next()) {
-                users.add(new User(rs.getInt("id"),
-                                   rs.getString("username"),
-                                   rs.getString("password"),
-                                   rs.getInt("role"),
-                                   rs.getInt("locked")));
+                users.add(mapUser(rs));
             }
         } catch (Exception ex) {}
         return users;
     }
     
-    public void addUser(String username, String password, int role) {
-        String sql = "INSERT INTO users(username,password,role) VALUES('" + username + "','" + password + "','" + role + "')";
-        
+    public User getUserByUsername(String username) throws SQLException {
+        String sql = "SELECT " + USER_COLS + " FROM users WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
-            
-        } catch (Exception ex) {
-            System.out.print(ex);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, username);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next() ? mapUser(rs) : null;
+            }
+        }
+    }
+    
+    public int countUsers() throws SQLException {
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement("SELECT COUNT(*) FROM users");
+            ResultSet rs = pstmt.executeQuery()){
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+    
+    public void addUser(String username, String passwordHash, String salt, int role) throws SQLException {
+        String sql = "INSERT INTO users(username,password,salt,role) VALUES(?,?,?,?)";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, username);
+            pstmt.setString(2, passwordHash);
+            pstmt.setString(3, salt);
+            pstmt.setInt(4, role);
+            pstmt.executeUpdate();
+        }
+    }
+    
+    public void recordLoginFailure(String username, String timestamp, int maxAttempts) throws SQLException {
+        String sql = "UPDATE users SET failed_attempts = failed_attempts + 1, "
+                   + "last_attempt = ?, last_status = 'FAILED', "
+                   + "role = CASE WHEN failed_attempts + 1 >= ? THEN 1 ELSE role END, "
+                   + "locked = CASE WHEN failed_attempts + 1 >= ? THEN 1 ELSE locked END "
+                   + "WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, timestamp);
+            pstmt.setInt(2, maxAttempts);
+            pstmt.setInt(3, maxAttempts);
+            pstmt.setString(4, username);
+            pstmt.executeUpdate();
+        }
+    }
+    
+    public void recordLoginSuccess(String username, String timestamp) throws SQLException {
+        String sql = "UPDATE users SET failed_attempts = 0, last_attempt = ?, last_status = 'SUCCESS' WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, timestamp);
+            pstmt.setString(2, username);
+            pstmt.executeUpdate();
+        }
+    }
+    
+    public void updatePassword(String username, String passwordHash, String salt) throws SQLException {
+        String sql = "UPDATE users SET password = ?, salt = ? WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, passwordHash);
+            pstmt.setString(2, salt);
+            pstmt.setString(3, username);
+            pstmt.executeUpdate();
+        }
+    }
+    
+    public void reenableUser(String username, int role) throws SQLException {
+        String sql = "UPDATE users SET role = ?, locked = 0, failed_attempts = 0 WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setInt(1, role);
+            pstmt.setString(2, username);
+            pstmt.executeUpdate();
         }
     }
     
     public void removeUser(String username) {
-        String sql = "DELETE FROM users WHERE username='" + username + "';";
-
+        String sql = "DELETE FROM users WHERE username = ?";
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-            System.out.println("User " + username + " has been deleted.");
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.executeUpdate();
         } catch (Exception ex) {
-            System.out.print(ex);
         }
+    }
+    
+    public void initUsersSchema() {
+        boolean hasSalt = false;
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("PRAGMA table_info(users)")) {
+            while (rs.next()) {
+                if ("salt".equalsIgnoreCase(rs.getString("name"))) {
+                    hasSalt = true;
+                }
+            }
+        } catch (Exception ex) {}
+        if (!hasSalt) {
+            dropUserTable();
+        }
+        createUserTable();
     }
     
     public Product getProduct(String name){
