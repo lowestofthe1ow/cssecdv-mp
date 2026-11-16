@@ -5,6 +5,7 @@
  */
 package View;
 
+import Controller.AccessControl;
 import Controller.SQLite;
 import Model.Logs;
 import java.util.ArrayList;
@@ -37,6 +38,10 @@ public class MgmtLogs extends javax.swing.JPanel {
         }
         
 //      LOAD CONTENTS
+        Frame frame = Frame.of(this);
+        if (frame == null || !AccessControl.check(frame.currentUser, AccessControl.LOGS_VIEW)) {
+            return;
+        }
         ArrayList<Logs> logs = sqlite.getLogs();
         for(int nCtr = 0; nCtr < logs.size(); nCtr++){
             tableModel.addRow(new Object[]{
@@ -135,10 +140,16 @@ public class MgmtLogs extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void clearBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.LOGS_VIEW)) {
+            return;
+        }
         
     }//GEN-LAST:event_clearBtnActionPerformed
 
     private void debugBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.LOGS_VIEW)) {
+            return;
+        }
         if(sqlite.DEBUG_MODE == 1)
             sqlite.DEBUG_MODE = 0;
         else

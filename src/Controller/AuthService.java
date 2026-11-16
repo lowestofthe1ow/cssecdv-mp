@@ -127,6 +127,9 @@ public class AuthService {
             if (a == null || a.getRole() < 2 || a.getRole() > 5) {
                 return GENERIC_ERROR;
             }
+            if (!AccessControl.check(a, AccessControl.USER_CHANGE_PASSWORD)) {
+                return "Access denied.";
+            }
             if (!PasswordUtil.verify(actorPw, a.getSalt(), a.getPassword())) {
                 db.recordLoginFailure(a.getUsername(), now(), MAX_ATTEMPTS);
                 SecurityLogger.log("AUTH_FAIL", a.getUsername(), "Re-authentication failed during password change");

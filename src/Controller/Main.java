@@ -27,6 +27,7 @@ public class Main {
         sqlite.createLogsTable();
         sqlite.initUsersSchema();
         SecurityLogger.init(sqlite);
+        AccessControl.init(sqlite);
         AuthService.seedDefaultAccountsIfEmpty(sqlite);
 
 //        // Create a database

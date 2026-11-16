@@ -153,13 +153,16 @@ public class SQLite {
     }
     
     public void addHistory(String username, String name, int stock, String timestamp) {
-        String sql = "INSERT INTO history(username,name,stock,timestamp) VALUES('" + username + "','" + name + "','" + stock + "','" + timestamp + "')";
+        String sql = "INSERT INTO history(username,name,stock,timestamp) VALUES(?,?,?,?)";
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, username);
+            pstmt.setString(2, name);
+            pstmt.setInt(3, stock);
+            pstmt.setString(4, timestamp);
+            pstmt.executeUpdate();
         } catch (Exception ex) {
-            System.out.print(ex);
         }
     }
     
@@ -177,14 +180,74 @@ public class SQLite {
         }
     }
     
-    public void addProduct(String name, int stock, double price) {
-        String sql = "INSERT INTO product(name,stock,price) VALUES('" + name + "','" + stock + "','" + price + "')";
+    public void addProduct(String name, int stock, double price) throws SQLException {
+        String sql = "INSERT INTO product(name,stock,price) VALUES(?,?,?)";
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
-        } catch (Exception ex) {
-            System.out.print(ex);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, name);
+            pstmt.setInt(2, stock);
+            pstmt.setDouble(3, price);
+            pstmt.executeUpdate();
+        }
+    }
+    
+    public boolean updateProduct(String oldName, String newName, int stock, double price) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(driverURL)) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement p = conn.prepareStatement("UPDATE product SET name = ?, stock = ?, price = ? WHERE name = ?");
+                PreparedStatement h = conn.prepareStatement("UPDATE history SET name = ? WHERE name = ?")) {
+                p.setString(1, newName);
+                p.setInt(2, stock);
+                p.setDouble(3, price);
+                p.setString(4, oldName);
+                if (p.executeUpdate() == 0) {
+                    conn.rollback();
+                    return false;
+                }
+                h.setString(1, newName);
+                h.setString(2, oldName);
+                h.executeUpdate();
+                conn.commit();
+                return true;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            }
+        }
+    }
+    
+    public boolean deleteProduct(String name) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement("DELETE FROM product WHERE name = ?")){
+            pstmt.setString(1, name);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+    
+    public boolean purchaseProduct(String username, String name, int qty, String timestamp) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(driverURL)) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement u = conn.prepareStatement("UPDATE product SET stock = stock - ? WHERE name = ? AND stock >= ?");
+                PreparedStatement h = conn.prepareStatement("INSERT INTO history(username,name,stock,timestamp) VALUES(?,?,?,?)")) {
+                u.setInt(1, qty);
+                u.setString(2, name);
+                u.setInt(3, qty);
+                if (u.executeUpdate() == 0) {
+                    conn.rollback();
+                    return false;
+                }
+                h.setString(1, username);
+                h.setString(2, name);
+                h.setInt(3, qty);
+                h.setString(4, timestamp);
+                h.executeUpdate();
+                conn.commit();
+                return true;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            }
         }
     }
     
@@ -205,6 +268,26 @@ public class SQLite {
             }
         } catch (Exception ex) {
             System.out.print(ex);
+        }
+        return histories;
+    }
+    
+    public ArrayList<History> getHistoryByUser(String username) throws SQLException {
+        String sql = "SELECT id, username, name, stock, timestamp FROM history WHERE username = ? COLLATE NOCASE";
+        ArrayList<History> histories = new ArrayList<History>();
+        
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, username);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    histories.add(new History(rs.getInt("id"),
+                                       rs.getString("username"),
+                                       rs.getString("name"),
+                                       rs.getInt("stock"),
+                                       rs.getString("timestamp")));
+                }
+            }
         }
         return histories;
     }
@@ -385,17 +468,31 @@ public class SQLite {
     }
     
     public Product getProduct(String name){
-        String sql = "SELECT name, stock, price FROM product WHERE name='" + name + "';";
+        String sql = "SELECT name, stock, price FROM product WHERE name = ?";
         Product product = null;
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
-            product = new Product(rs.getString("name"),
-                                   rs.getInt("stock"),
-                                   rs.getFloat("price"));
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, name);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    product = new Product(rs.getString("name"),
+                                           rs.getInt("stock"),
+                                           rs.getFloat("price"));
+                }
+            }
         } catch (Exception ex) {
-            System.out.print(ex);
         }
         return product;
+    }
+    
+    public boolean setUserRole(String username, int role) throws SQLException {
+        String sql = "UPDATE users SET role = ?, locked = ?, failed_attempts = 0 WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setInt(1, role);
+            pstmt.setInt(2, role == 1 ? 1 : 0);
+            pstmt.setString(3, username);
+            return pstmt.executeUpdate() > 0;
+        }
     }
 }

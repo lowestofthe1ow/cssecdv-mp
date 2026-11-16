@@ -5,8 +5,11 @@
  */
 package View;
 
+import Controller.AccessControl;
+import Controller.ProductService;
 import Controller.SQLite;
 import Model.Product;
+import Model.User;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -42,7 +45,13 @@ public class MgmtProduct extends javax.swing.JPanel {
         }
         
 //      LOAD CONTENTS
-        ArrayList<Product> products = sqlite.getProduct();
+        Frame frame = Frame.of(this);
+        User actor = frame == null ? null : frame.currentUser;
+        purchaseBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_PURCHASE));
+        addBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_ADD));
+        editBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_EDIT));
+        deleteBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_DELETE));
+        ArrayList<Product> products = new ProductService(sqlite).list(actor);
         for(int nCtr = 0; nCtr < products.size(); nCtr++){
             tableModel.addRow(new Object[]{
                 products.get(nCtr).getName(), 
@@ -174,6 +183,9 @@ public class MgmtProduct extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void purchaseBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_purchaseBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.PRODUCT_PURCHASE)) {
+            return;
+        }
         if(table.getSelectedRow() >= 0){
             JTextField stockFld = new JTextField("0");
             designer(stockFld, "PRODUCT STOCK");
@@ -185,12 +197,17 @@ public class MgmtProduct extends javax.swing.JPanel {
             int result = JOptionPane.showConfirmDialog(null, message, "PURCHASE PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
             if (result == JOptionPane.OK_OPTION) {
-                System.out.println(stockFld.getText());
+                String error = new ProductService(sqlite).purchase(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString(), stockFld.getText());
+                JOptionPane.showMessageDialog(null, error == null ? "Purchase successful." : error, "PURCHASE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                init();
             }
         }
     }//GEN-LAST:event_purchaseBtnActionPerformed
 
     private void addBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.PRODUCT_ADD)) {
+            return;
+        }
         JTextField nameFld = new JTextField();
         JTextField stockFld = new JTextField();
         JTextField priceFld = new JTextField();
@@ -206,14 +223,18 @@ public class MgmtProduct extends javax.swing.JPanel {
         int result = JOptionPane.showConfirmDialog(null, message, "ADD PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
         if (result == JOptionPane.OK_OPTION) {
-            System.out.println(nameFld.getText());
-            System.out.println(stockFld.getText());
-            System.out.println(priceFld.getText());
+            String error = new ProductService(sqlite).addProduct(Frame.of(this).currentUser, nameFld.getText(), stockFld.getText(), priceFld.getText());
+            JOptionPane.showMessageDialog(null, error == null ? "Product added." : error, "ADD PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+            init();
         }
     }//GEN-LAST:event_addBtnActionPerformed
 
     private void editBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.PRODUCT_EDIT)) {
+            return;
+        }
         if(table.getSelectedRow() >= 0){
+            String oldName = tableModel.getValueAt(table.getSelectedRow(), 0).toString();
             JTextField nameFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 0) + "");
             JTextField stockFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 1) + "");
             JTextField priceFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 2) + "");
@@ -229,19 +250,24 @@ public class MgmtProduct extends javax.swing.JPanel {
             int result = JOptionPane.showConfirmDialog(null, message, "EDIT PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
             if (result == JOptionPane.OK_OPTION) {
-                System.out.println(nameFld.getText());
-                System.out.println(stockFld.getText());
-                System.out.println(priceFld.getText());
+                String error = new ProductService(sqlite).editProduct(Frame.of(this).currentUser, oldName, nameFld.getText(), stockFld.getText(), priceFld.getText());
+                JOptionPane.showMessageDialog(null, error == null ? "Product updated." : error, "EDIT PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                init();
             }
         }
     }//GEN-LAST:event_editBtnActionPerformed
 
     private void deleteBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.PRODUCT_DELETE)) {
+            return;
+        }
         if(table.getSelectedRow() >= 0){
             int result = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete " + tableModel.getValueAt(table.getSelectedRow(), 0) + "?", "DELETE PRODUCT", JOptionPane.YES_NO_OPTION);
             
             if (result == JOptionPane.YES_OPTION) {
-                System.out.println(tableModel.getValueAt(table.getSelectedRow(), 0));
+                String error = new ProductService(sqlite).deleteProduct(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString());
+                JOptionPane.showMessageDialog(null, error == null ? "Product deleted." : error, "DELETE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                init();
             }
         }
     }//GEN-LAST:event_deleteBtnActionPerformed

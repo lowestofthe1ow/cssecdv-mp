@@ -5,9 +5,12 @@
  */
 package View;
 
+import Controller.AccessControl;
+import Controller.HistoryService;
 import Controller.SQLite;
 import Model.History;
 import Model.Product;
+import Model.User;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -46,15 +49,21 @@ public class MgmtHistory extends javax.swing.JPanel {
         }
         
 //      LOAD CONTENTS
-        ArrayList<History> history = sqlite.getHistory();
+        Frame frame = Frame.of(this);
+        User actor = frame == null ? null : frame.currentUser;
+        addRows(new HistoryService(sqlite).view(actor));
+    }
+    
+    private void addRows(ArrayList<History> history){
         for(int nCtr = 0; nCtr < history.size(); nCtr++){
             Product product = sqlite.getProduct(history.get(nCtr).getName());
+            float price = product == null ? 0 : product.getPrice();
             tableModel.addRow(new Object[]{
                 history.get(nCtr).getUsername(), 
                 history.get(nCtr).getName(), 
                 history.get(nCtr).getStock(), 
-                product.getPrice(), 
-                product.getPrice() * history.get(nCtr).getStock(), 
+                price, 
+                price * history.get(nCtr).getStock(), 
                 history.get(nCtr).getTimestamp()
             });
         }
@@ -159,6 +168,9 @@ public class MgmtHistory extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
+        if (!Frame.guard(this, AccessControl.SCREEN_HISTORY)) {
+            return;
+        }
         JTextField searchFld = new JTextField("0");
         designer(searchFld, "SEARCH USERNAME OR PRODUCT");
 
@@ -175,24 +187,10 @@ public class MgmtHistory extends javax.swing.JPanel {
             }
 
 //          LOAD CONTENTS
-            ArrayList<History> history = sqlite.getHistory();
-            for(int nCtr = 0; nCtr < history.size(); nCtr++){
-                if(searchFld.getText().contains(history.get(nCtr).getUsername()) || 
-                   history.get(nCtr).getUsername().contains(searchFld.getText()) || 
-                   searchFld.getText().contains(history.get(nCtr).getName()) || 
-                   history.get(nCtr).getName().contains(searchFld.getText())){
-                
-                    Product product = sqlite.getProduct(history.get(nCtr).getName());
-                    tableModel.addRow(new Object[]{
-                        history.get(nCtr).getUsername(), 
-                        history.get(nCtr).getName(), 
-                        history.get(nCtr).getStock(), 
-                        product.getPrice(), 
-                        product.getPrice() * history.get(nCtr).getStock(), 
-                        history.get(nCtr).getTimestamp()
-                    });
-                }
+            if (!HistoryService.isValidSearch(searchFld.getText())) {
+                JOptionPane.showMessageDialog(null, "Search may only contain letters, digits and spaces (30 characters max).", "SEARCH HISTORY", JOptionPane.WARNING_MESSAGE);
             }
+            addRows(new HistoryService(sqlite).search(Frame.of(this).currentUser, searchFld.getText()));
         }
     }//GEN-LAST:event_searchBtnActionPerformed
 

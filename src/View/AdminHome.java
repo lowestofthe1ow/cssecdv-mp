@@ -55,6 +55,13 @@ public class AdminHome extends javax.swing.JPanel {
     public void showPnl(String panelName){
         contentView.show(Content, panelName);
     }
+    
+    public void applyAccess(User user){
+        usersBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_USERS));
+        productsBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_PRODUCTS));
+        historyBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_HISTORY));
+        logsBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_LOGS));
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -156,6 +163,9 @@ public class AdminHome extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void usersBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_usersBtnActionPerformed
+        if (!Frame.guard(this, Controller.AccessControl.SCREEN_USERS)) {
+            return;
+        }
         mgmtUser.init();
         usersBtn.setForeground(Color.red);
         productsBtn.setForeground(Color.black);
@@ -165,6 +175,9 @@ public class AdminHome extends javax.swing.JPanel {
     }//GEN-LAST:event_usersBtnActionPerformed
 
     private void productsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_productsBtnActionPerformed
+        if (!Frame.guard(this, Controller.AccessControl.SCREEN_PRODUCTS)) {
+            return;
+        }
         mgmtProduct.init();
         usersBtn.setForeground(Color.black);
         productsBtn.setForeground(Color.red);
@@ -174,6 +187,9 @@ public class AdminHome extends javax.swing.JPanel {
     }//GEN-LAST:event_productsBtnActionPerformed
 
     private void historyBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_historyBtnActionPerformed
+        if (!Frame.guard(this, Controller.AccessControl.SCREEN_HISTORY)) {
+            return;
+        }
         mgmtHistory.init();
         usersBtn.setForeground(Color.black);
         productsBtn.setForeground(Color.black);
@@ -183,6 +199,9 @@ public class AdminHome extends javax.swing.JPanel {
     }//GEN-LAST:event_historyBtnActionPerformed
 
     private void logsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logsBtnActionPerformed
+        if (!Frame.guard(this, Controller.AccessControl.SCREEN_LOGS)) {
+            return;
+        }
         mgmtLogs.init();
         usersBtn.setForeground(Color.black);
         productsBtn.setForeground(Color.black);
