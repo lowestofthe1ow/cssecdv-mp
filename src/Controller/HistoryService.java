@@ -3,11 +3,8 @@ package Controller;
 import Model.History;
 import Model.User;
 import java.util.ArrayList;
-import java.util.regex.Pattern;
 
 public class HistoryService {
-
-    private static final Pattern SEARCH = Pattern.compile("^[A-Za-z0-9 ]{0,30}$");
 
     private final SQLite db;
 
@@ -16,7 +13,7 @@ public class HistoryService {
     }
 
     public static boolean isValidSearch(String query) {
-        return query != null && SEARCH.matcher(query).matches();
+        return Validator.search(query);
     }
 
     public ArrayList<History> view(User actor) {

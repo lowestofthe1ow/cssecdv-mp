@@ -1,6 +1,7 @@
 package View;
 
 import Controller.AccessControl;
+import Controller.ErrorHandler;
 import Controller.AuthService;
 import Controller.Main;
 import Model.User;
@@ -237,6 +238,7 @@ public class Frame extends javax.swing.JFrame {
         this.setTitle("CSSECDV - SECURITY Svcs");
         this.setLocationRelativeTo(null);
         
+        ErrorHandler.setFailsafe(this::logout);
         this.main = controller;
         this.auth = new AuthService(main.sqlite);
         loginPnl.frame = this;

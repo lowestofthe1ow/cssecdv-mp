@@ -5,7 +5,6 @@ import Model.Logs;
 import Model.Product;
 import Model.User;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -21,11 +20,10 @@ public class SQLite {
     public void createNewDatabase() {
         try (Connection conn = DriverManager.getConnection(driverURL)) {
             if (conn != null) {
-                DatabaseMetaData meta = conn.getMetaData();
-                System.out.println("Database database.db created.");
+                conn.getMetaData();
             }
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.createNewDatabase", ex);
         }
     }
     
@@ -41,9 +39,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table history in database.db created.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.createHistoryTable", ex);
         }
     }
     
@@ -59,9 +56,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table logs in database.db created.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.createLogsTable", ex);
         }
     }
      
@@ -76,9 +72,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table product in database.db created.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.createProductTable", ex);
         }
     }
      
@@ -98,9 +93,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table users in database.db created.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.createUserTable", ex);
         }
     }
     
@@ -110,9 +104,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table history in database.db dropped.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.dropHistoryTable", ex);
         }
     }
     
@@ -122,9 +115,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table logs in database.db dropped.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.dropLogsTable", ex);
         }
     }
     
@@ -134,9 +126,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table product in database.db dropped.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.dropProductTable", ex);
         }
     }
     
@@ -146,9 +137,8 @@ public class SQLite {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Table users in database.db dropped.");
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.dropUserTable", ex);
         }
     }
     
@@ -163,6 +153,7 @@ public class SQLite {
             pstmt.setString(4, timestamp);
             pstmt.executeUpdate();
         } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.addHistory", ex);
         }
     }
     
@@ -177,6 +168,8 @@ public class SQLite {
             pstmt.setString(4, timestamp);
             pstmt.executeUpdate();
         } catch (Exception ex) {
+            // Intentionally silent: ErrorHandler.handle() -> SecurityLogger.log() -> addLogs().
+            // Calling ErrorHandler here would recurse forever if the log write itself keeps failing.
         }
     }
     
@@ -256,8 +249,8 @@ public class SQLite {
         ArrayList<History> histories = new ArrayList<History>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery()){
             
             while (rs.next()) {
                 histories.add(new History(rs.getInt("id"),
@@ -267,7 +260,7 @@ public class SQLite {
                                    rs.getString("timestamp")));
             }
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.getHistory", ex);
         }
         return histories;
     }
@@ -297,8 +290,8 @@ public class SQLite {
         ArrayList<Logs> logs = new ArrayList<Logs>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery()){
             
             while (rs.next()) {
                 logs.add(new Logs(rs.getInt("id"),
@@ -308,7 +301,7 @@ public class SQLite {
                                    rs.getString("timestamp")));
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            ErrorHandler.handle("SQLite.getLogs", ex);
         }
         return logs;
     }
@@ -318,8 +311,8 @@ public class SQLite {
         ArrayList<Product> products = new ArrayList<Product>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery()){
             
             while (rs.next()) {
                 products.add(new Product(rs.getInt("id"),
@@ -328,7 +321,7 @@ public class SQLite {
                                    rs.getFloat("price")));
             }
         } catch (Exception ex) {
-            System.out.print(ex);
+            ErrorHandler.handle("SQLite.getProduct", ex);
         }
         return products;
     }
@@ -358,7 +351,9 @@ public class SQLite {
             while (rs.next()) {
                 users.add(mapUser(rs));
             }
-        } catch (Exception ex) {}
+        } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.getUsers", ex);
+        }
         return users;
     }
     
@@ -447,20 +442,23 @@ public class SQLite {
             pstmt.setString(1, username);
             pstmt.executeUpdate();
         } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.removeUser", ex);
         }
     }
     
     public void initUsersSchema() {
         boolean hasSalt = false;
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("PRAGMA table_info(users)")) {
+            PreparedStatement pstmt = conn.prepareStatement("PRAGMA table_info(users)");
+            ResultSet rs = pstmt.executeQuery()) {
             while (rs.next()) {
                 if ("salt".equalsIgnoreCase(rs.getString("name"))) {
                     hasSalt = true;
                 }
             }
-        } catch (Exception ex) {}
+        } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.initUsersSchema", ex);
+        }
         if (!hasSalt) {
             dropUserTable();
         }
@@ -481,6 +479,7 @@ public class SQLite {
                 }
             }
         } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.getProduct(String)", ex);
         }
         return product;
     }

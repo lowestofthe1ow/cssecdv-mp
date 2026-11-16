@@ -17,6 +17,7 @@ public class Main {
     public SQLite sqlite;
     
     public static void main(String[] args) {
+        ErrorHandler.install();
         new Main().init();
     }
     

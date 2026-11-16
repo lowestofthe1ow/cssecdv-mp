@@ -6,6 +6,7 @@
 package View;
 
 import Controller.AccessControl;
+import Controller.ErrorHandler;
 import Controller.HistoryService;
 import Controller.SQLite;
 import Model.History;
@@ -168,34 +169,49 @@ public class MgmtHistory extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.SCREEN_HISTORY)) {
-            return;
-        }
-        JTextField searchFld = new JTextField("0");
-        designer(searchFld, "SEARCH USERNAME OR PRODUCT");
-
-        Object[] message = {
-            searchFld
-        };
-
-        int result = JOptionPane.showConfirmDialog(null, message, "SEARCH HISTORY", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-
-        if (result == JOptionPane.OK_OPTION) {
-//          CLEAR TABLE
-            for(int nCtr = tableModel.getRowCount(); nCtr > 0; nCtr--){
-                tableModel.removeRow(0);
+        try {
+            if (!Frame.guard(this, AccessControl.SCREEN_HISTORY)) {
+                return;
             }
+            JTextField searchFld = new JTextField("0");
+            designer(searchFld, "SEARCH USERNAME OR PRODUCT");
 
-//          LOAD CONTENTS
-            if (!HistoryService.isValidSearch(searchFld.getText())) {
-                JOptionPane.showMessageDialog(null, "Search may only contain letters, digits and spaces (30 characters max).", "SEARCH HISTORY", JOptionPane.WARNING_MESSAGE);
+            Object[] message = {
+                searchFld
+            };
+
+            int result = JOptionPane.showConfirmDialog(null, message, "SEARCH HISTORY", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+
+            if (result == JOptionPane.OK_OPTION) {
+    //          VALIDATE FIRST: reject the input entirely, no cleaning
+                if (!HistoryService.isValidSearch(searchFld.getText())) {
+                    JOptionPane.showMessageDialog(null, "Search may only contain letters, digits and spaces (30 characters max).", "SEARCH HISTORY", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+    //          CLEAR TABLE
+                for(int nCtr = tableModel.getRowCount(); nCtr > 0; nCtr--){
+                    tableModel.removeRow(0);
+                }
+
+    //          LOAD CONTENTS
+                Frame frame = Frame.of(this);
+                if (frame == null) {
+                    return;
+                }
+                addRows(new HistoryService(sqlite).search(frame.currentUser, searchFld.getText()));
             }
-            addRows(new HistoryService(sqlite).search(Frame.of(this).currentUser, searchFld.getText()));
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtHistory.search", ex);
         }
     }//GEN-LAST:event_searchBtnActionPerformed
 
     private void reloadBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reloadBtnActionPerformed
-        init();
+        try {
+            init();
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtHistory.reload", ex);
+        }
     }//GEN-LAST:event_reloadBtnActionPerformed
 
 

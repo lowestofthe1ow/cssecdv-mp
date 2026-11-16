@@ -4,7 +4,6 @@ import Model.User;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.regex.Pattern;
 
 public class AuthService {
 
@@ -12,7 +11,6 @@ public class AuthService {
     public static final String GENERIC_LOGIN_ERROR = "Invalid username and/or password";
     public static final String GENERIC_ERROR = "Something went wrong. Please try again.";
 
-    private static final Pattern USERNAME = Pattern.compile("^[A-Za-z0-9]{3,20}$");
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final SQLite db;
@@ -42,7 +40,7 @@ public class AuthService {
     }
 
     public static boolean isValidUsername(String u) {
-        return u != null && USERNAME.matcher(u).matches();
+        return Validator.username(u);
     }
 
     
@@ -129,6 +127,9 @@ public class AuthService {
             }
             if (!AccessControl.check(a, AccessControl.USER_CHANGE_PASSWORD)) {
                 return "Access denied.";
+            }
+            if (!Validator.passwordLength(actorPw)) {
+                return GENERIC_ERROR;
             }
             if (!PasswordUtil.verify(actorPw, a.getSalt(), a.getPassword())) {
                 db.recordLoginFailure(a.getUsername(), now(), MAX_ATTEMPTS);

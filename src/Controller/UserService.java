@@ -2,14 +2,11 @@ package Controller;
 
 import Model.User;
 import java.util.ArrayList;
-import java.util.regex.Pattern;
 
 public class UserService {
 
     public static final String DENIED = "Access denied.";
     public static final String GENERIC_ERROR = "Something went wrong. Please try again.";
-
-    private static final Pattern ROLE = Pattern.compile("^[1-5]$");
 
     private final SQLite db;
 
@@ -37,7 +34,7 @@ public class UserService {
             if (!AccessControl.check(actor, AccessControl.USER_EDIT_ROLE)) {
                 return DENIED;
             }
-            if (roleText == null || !ROLE.matcher(roleText).matches()) {
+            if (!Validator.role(roleText)) {
                 SecurityLogger.log("VALIDATION_FAIL", actor.getUsername(), "Role code rejected by validation");
                 return "Role must be a number from 1 to 5.";
             }

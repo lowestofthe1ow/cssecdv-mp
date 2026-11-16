@@ -6,6 +6,7 @@
 package View;
 
 import Controller.AccessControl;
+import Controller.ErrorHandler;
 import Controller.ProductService;
 import Controller.SQLite;
 import Model.Product;
@@ -183,92 +184,108 @@ public class MgmtProduct extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void purchaseBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_purchaseBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.PRODUCT_PURCHASE)) {
-            return;
-        }
-        if(table.getSelectedRow() >= 0){
-            JTextField stockFld = new JTextField("0");
-            designer(stockFld, "PRODUCT STOCK");
-
-            Object[] message = {
-                "How many " + tableModel.getValueAt(table.getSelectedRow(), 0) + " do you want to purchase?", stockFld
-            };
-
-            int result = JOptionPane.showConfirmDialog(null, message, "PURCHASE PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String error = new ProductService(sqlite).purchase(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString(), stockFld.getText());
-                JOptionPane.showMessageDialog(null, error == null ? "Purchase successful." : error, "PURCHASE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
-                init();
+        try {
+            if (!Frame.guard(this, AccessControl.PRODUCT_PURCHASE)) {
+                return;
             }
+            if(table.getSelectedRow() >= 0){
+                JTextField stockFld = new JTextField("0");
+                designer(stockFld, "PRODUCT STOCK");
+
+                Object[] message = {
+                    "How many " + tableModel.getValueAt(table.getSelectedRow(), 0) + " do you want to purchase?", stockFld
+                };
+
+                int result = JOptionPane.showConfirmDialog(null, message, "PURCHASE PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+
+                if (result == JOptionPane.OK_OPTION) {
+                    String error = new ProductService(sqlite).purchase(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString(), stockFld.getText());
+                    JOptionPane.showMessageDialog(null, error == null ? "Purchase successful." : error, "PURCHASE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                    init();
+                }
+            }
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtProduct.purchase", ex);
         }
     }//GEN-LAST:event_purchaseBtnActionPerformed
 
     private void addBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.PRODUCT_ADD)) {
-            return;
-        }
-        JTextField nameFld = new JTextField();
-        JTextField stockFld = new JTextField();
-        JTextField priceFld = new JTextField();
-
-        designer(nameFld, "PRODUCT NAME");
-        designer(stockFld, "PRODUCT STOCK");
-        designer(priceFld, "PRODUCT PRICE");
-
-        Object[] message = {
-            "Insert New Product Details:", nameFld, stockFld, priceFld
-        };
-
-        int result = JOptionPane.showConfirmDialog(null, message, "ADD PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-
-        if (result == JOptionPane.OK_OPTION) {
-            String error = new ProductService(sqlite).addProduct(Frame.of(this).currentUser, nameFld.getText(), stockFld.getText(), priceFld.getText());
-            JOptionPane.showMessageDialog(null, error == null ? "Product added." : error, "ADD PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
-            init();
-        }
-    }//GEN-LAST:event_addBtnActionPerformed
-
-    private void editBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.PRODUCT_EDIT)) {
-            return;
-        }
-        if(table.getSelectedRow() >= 0){
-            String oldName = tableModel.getValueAt(table.getSelectedRow(), 0).toString();
-            JTextField nameFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 0) + "");
-            JTextField stockFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 1) + "");
-            JTextField priceFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 2) + "");
+        try {
+            if (!Frame.guard(this, AccessControl.PRODUCT_ADD)) {
+                return;
+            }
+            JTextField nameFld = new JTextField();
+            JTextField stockFld = new JTextField();
+            JTextField priceFld = new JTextField();
 
             designer(nameFld, "PRODUCT NAME");
             designer(stockFld, "PRODUCT STOCK");
             designer(priceFld, "PRODUCT PRICE");
 
             Object[] message = {
-                "Edit Product Details:", nameFld, stockFld, priceFld
+                "Insert New Product Details:", nameFld, stockFld, priceFld
             };
 
-            int result = JOptionPane.showConfirmDialog(null, message, "EDIT PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+            int result = JOptionPane.showConfirmDialog(null, message, "ADD PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
             if (result == JOptionPane.OK_OPTION) {
-                String error = new ProductService(sqlite).editProduct(Frame.of(this).currentUser, oldName, nameFld.getText(), stockFld.getText(), priceFld.getText());
-                JOptionPane.showMessageDialog(null, error == null ? "Product updated." : error, "EDIT PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                String error = new ProductService(sqlite).addProduct(Frame.of(this).currentUser, nameFld.getText(), stockFld.getText(), priceFld.getText());
+                JOptionPane.showMessageDialog(null, error == null ? "Product added." : error, "ADD PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
                 init();
             }
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtProduct.add", ex);
+        }
+    }//GEN-LAST:event_addBtnActionPerformed
+
+    private void editBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editBtnActionPerformed
+        try {
+            if (!Frame.guard(this, AccessControl.PRODUCT_EDIT)) {
+                return;
+            }
+            if(table.getSelectedRow() >= 0){
+                String oldName = tableModel.getValueAt(table.getSelectedRow(), 0).toString();
+                JTextField nameFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 0) + "");
+                JTextField stockFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 1) + "");
+                JTextField priceFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 2) + "");
+
+                designer(nameFld, "PRODUCT NAME");
+                designer(stockFld, "PRODUCT STOCK");
+                designer(priceFld, "PRODUCT PRICE");
+
+                Object[] message = {
+                    "Edit Product Details:", nameFld, stockFld, priceFld
+                };
+
+                int result = JOptionPane.showConfirmDialog(null, message, "EDIT PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+
+                if (result == JOptionPane.OK_OPTION) {
+                    String error = new ProductService(sqlite).editProduct(Frame.of(this).currentUser, oldName, nameFld.getText(), stockFld.getText(), priceFld.getText());
+                    JOptionPane.showMessageDialog(null, error == null ? "Product updated." : error, "EDIT PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                    init();
+                }
+            }
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtProduct.edit", ex);
         }
     }//GEN-LAST:event_editBtnActionPerformed
 
     private void deleteBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.PRODUCT_DELETE)) {
-            return;
-        }
-        if(table.getSelectedRow() >= 0){
-            int result = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete " + tableModel.getValueAt(table.getSelectedRow(), 0) + "?", "DELETE PRODUCT", JOptionPane.YES_NO_OPTION);
-            
-            if (result == JOptionPane.YES_OPTION) {
-                String error = new ProductService(sqlite).deleteProduct(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString());
-                JOptionPane.showMessageDialog(null, error == null ? "Product deleted." : error, "DELETE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
-                init();
+        try {
+            if (!Frame.guard(this, AccessControl.PRODUCT_DELETE)) {
+                return;
             }
+            if(table.getSelectedRow() >= 0){
+                int result = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete " + tableModel.getValueAt(table.getSelectedRow(), 0) + "?", "DELETE PRODUCT", JOptionPane.YES_NO_OPTION);
+            
+                if (result == JOptionPane.YES_OPTION) {
+                    String error = new ProductService(sqlite).deleteProduct(Frame.of(this).currentUser, tableModel.getValueAt(table.getSelectedRow(), 0).toString());
+                    JOptionPane.showMessageDialog(null, error == null ? "Product deleted." : error, "DELETE PRODUCT", error == null ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                    init();
+                }
+            }
+        } catch (Exception ex) {
+            ErrorHandler.report(this, "MgmtProduct.delete", ex);
         }
     }//GEN-LAST:event_deleteBtnActionPerformed
 
