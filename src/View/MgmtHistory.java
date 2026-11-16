@@ -9,8 +9,8 @@ import Controller.AccessControl;
 import Controller.ErrorHandler;
 import Controller.HistoryService;
 import Controller.SQLite;
+import Controller.SecurityLogger;
 import Model.History;
-import Model.Product;
 import Model.User;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
@@ -57,8 +57,7 @@ public class MgmtHistory extends javax.swing.JPanel {
     
     private void addRows(ArrayList<History> history){
         for(int nCtr = 0; nCtr < history.size(); nCtr++){
-            Product product = sqlite.getProduct(history.get(nCtr).getName());
-            float price = product == null ? 0 : product.getPrice();
+            double price = history.get(nCtr).getUnitPrice();
             tableModel.addRow(new Object[]{
                 history.get(nCtr).getUsername(), 
                 history.get(nCtr).getName(), 
@@ -185,6 +184,10 @@ public class MgmtHistory extends javax.swing.JPanel {
             if (result == JOptionPane.OK_OPTION) {
     //          VALIDATE FIRST: reject the input entirely, no cleaning
                 if (!HistoryService.isValidSearch(searchFld.getText())) {
+                    Frame frame = Frame.of(this);
+                    SecurityLogger.log("VALIDATION_FAIL",
+                            frame == null || frame.currentUser == null ? "unknown" : frame.currentUser.getUsername(),
+                            "History search rejected by validation");
                     JOptionPane.showMessageDialog(null, "Search may only contain letters, digits and spaces (30 characters max).", "SEARCH HISTORY", JOptionPane.WARNING_MESSAGE);
                     return;
                 }

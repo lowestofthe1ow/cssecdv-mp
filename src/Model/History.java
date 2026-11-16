@@ -20,6 +20,7 @@ public class History {
     private String username;
     private String name;
     private int stock;
+    private double unitPrice;
     private Timestamp timestamp;
 
     private SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
@@ -31,11 +32,16 @@ public class History {
         this.timestamp = new Timestamp(new Date().getTime());
     }
     
-    public History(int id, String username, String name, int stock, String timestamp){
+    public History(int id, String username, String name, int stock, String timestamp) {
+        this(id, username, name, stock, timestamp, 0.0);
+    }
+
+    public History(int id, String username, String name, int stock, String timestamp, double unitPrice) {
         this.id = id;
         this.username = username;
         this.name = name;
         this.stock = stock;
+        this.unitPrice = unitPrice;
         try {
             this.timestamp = new Timestamp(dateformat.parse(timestamp).getTime());
         } catch (ParseException ex) {
@@ -75,6 +81,14 @@ public class History {
         this.stock = stock;
     }
     
+    public double getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(double unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
     public Timestamp getTimestamp() {
         return timestamp;
     }

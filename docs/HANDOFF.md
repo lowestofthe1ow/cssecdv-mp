@@ -1,3 +1,5 @@
+> **Historical baseline note (November 2026):** This handoff records findings from an earlier repository state. Several items below have since been addressed; use the current source and README for the latest implementation and build instructions.
+
 > [!NOTE]
 > This handoff document was generated with Gemini 3.8 Flash (High) with the
 > Antigravity CLI (1.5.0).

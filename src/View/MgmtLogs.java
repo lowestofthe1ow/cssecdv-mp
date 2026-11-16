@@ -5,7 +5,7 @@
  */
 package View;
 
-import Controller.AccessControl;
+import Controller.LogService;
 import Controller.SQLite;
 import Model.Logs;
 import java.util.ArrayList;
@@ -25,10 +25,9 @@ public class MgmtLogs extends javax.swing.JPanel {
         this.sqlite = sqlite;
         tableModel = (DefaultTableModel)table.getModel();
         table.getTableHeader().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-        
-//        UNCOMMENT TO DISABLE BUTTONS
-//        clearBtn.setVisible(false);
-//        debugBtn.setVisible(false);
+        // Audit logs are append-only from the UI; destructive/debug controls are unavailable.
+        clearBtn.setVisible(false);
+        debugBtn.setVisible(false);
     }
 
     public void init(){
@@ -39,10 +38,10 @@ public class MgmtLogs extends javax.swing.JPanel {
         
 //      LOAD CONTENTS
         Frame frame = Frame.of(this);
-        if (frame == null || !AccessControl.check(frame.currentUser, AccessControl.LOGS_VIEW)) {
+        if (frame == null) {
             return;
         }
-        ArrayList<Logs> logs = sqlite.getLogs();
+        ArrayList<Logs> logs = new LogService(sqlite).view(frame.currentUser);
         for(int nCtr = 0; nCtr < logs.size(); nCtr++){
             tableModel.addRow(new Object[]{
                 logs.get(nCtr).getEvent(), 
@@ -140,20 +139,11 @@ public class MgmtLogs extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void clearBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.LOGS_VIEW)) {
-            return;
-        }
-        
+        // Intentionally unavailable: security audit records must not be cleared from the UI.
     }//GEN-LAST:event_clearBtnActionPerformed
 
     private void debugBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugBtnActionPerformed
-        if (!Frame.guard(this, AccessControl.LOGS_VIEW)) {
-            return;
-        }
-        if(sqlite.DEBUG_MODE == 1)
-            sqlite.DEBUG_MODE = 0;
-        else
-            sqlite.DEBUG_MODE = 1;
+        // Intentionally unavailable: no debug mode is exposed to end users.
     }//GEN-LAST:event_debugBtnActionPerformed
 
 

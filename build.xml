@@ -10,6 +10,14 @@
 <project name="CSSECDV" default="default" basedir=".">
     <description>Builds, tests, and runs the project CSSECDV.</description>
     <import file="nbproject/build-impl.xml"/>
+
+    <!-- Ship the external JDBC driver and the seeded database beside the executable JAR. -->
+    <target name="-post-jar">
+        <mkdir dir="${dist.dir}/lib"/>
+        <copy file="${file.reference.sqlite-jdbc-3.23.1.jar}" tofile="${dist.dir}/lib/sqlite-jdbc-3.23.1.jar" overwrite="true"/>
+        <copy file="database.db" todir="${dist.dir}" overwrite="true"/>
+    </target>
+
     <!--
 
     There exist several targets which are by default empty and which can be 

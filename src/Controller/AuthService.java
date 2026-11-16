@@ -82,6 +82,7 @@ public class AuthService {
             SecurityLogger.log("AUTH_SUCCESS", u.getUsername(), "Login successful");
             return new LoginResult(true, u, u.getLastAttempt(), u.getLastStatus());
         } catch (Exception e) {
+            ErrorHandler.handle("AuthService.login", e);
             return DENIED;
         }
     }
@@ -111,6 +112,7 @@ public class AuthService {
             SecurityLogger.log("NOTICE", username, "User registration successful");
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("AuthService.register", e);
             return "Registration failed. Please try again.";
         }
     }
@@ -158,6 +160,7 @@ public class AuthService {
                     "Password of " + t.getUsername() + " changed after re-authentication");
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("AuthService.changePasswordFor", e);
             return GENERIC_ERROR;
         }
     }
@@ -167,6 +170,7 @@ public class AuthService {
             User u = db.getUserByUsername(username);
             return u == null || u.getRole() < 2 || u.getRole() > 5;
         } catch (Exception e) {
+            ErrorHandler.handle("AuthService.isAccountDisabled", e);
             return true;
         }
     }
@@ -189,6 +193,7 @@ public class AuthService {
                 db.addUser(a[0], PasswordUtil.hash(a[1].toCharArray(), salt), salt, Integer.parseInt(a[2]));
             }
         } catch (Exception e) {
+            ErrorHandler.handle("AuthService.seedDefaultAccountsIfEmpty", e);
         }
     }
 }

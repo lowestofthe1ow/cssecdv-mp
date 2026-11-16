@@ -47,11 +47,12 @@ public class ProductService {
             }
             return db.getProduct();
         } catch (Exception e) {
+            ErrorHandler.handle("ProductService.list", e);
             return new ArrayList<Product>();
         }
     }
 
-        public String purchase(User actor, String productName, String qtyText) {
+    public String purchase(User actor, String productName, String qtyText) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_PURCHASE)) {
                 return DENIED;
@@ -74,6 +75,7 @@ public class ProductService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "Purchased " + qty + " x " + productName);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("ProductService.purchase", e);
             return GENERIC_ERROR;
         }
     }
@@ -91,6 +93,7 @@ public class ProductService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "Product added: " + name);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("ProductService.addProduct", e);
             return "Could not add the product. The name may already exist.";
         }
     }
@@ -114,6 +117,7 @@ public class ProductService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "Product edited: " + oldName);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("ProductService.editProduct", e);
             return "Could not update the product. The name may already exist.";
         }
     }
@@ -133,6 +137,7 @@ public class ProductService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "Product deleted: " + name);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("ProductService.deleteProduct", e);
             return GENERIC_ERROR;
         }
     }

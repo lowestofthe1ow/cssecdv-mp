@@ -25,6 +25,7 @@ public class UserService {
             }
             return db.getUsers();
         } catch (Exception e) {
+            ErrorHandler.handle("UserService.list", e);
             return new ArrayList<User>();
         }
     }
@@ -48,6 +49,7 @@ public class UserService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "Role of " + target + " changed to " + roleText);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("UserService.changeRole", e);
             return GENERIC_ERROR;
         }
     }
@@ -67,6 +69,7 @@ public class UserService {
             SecurityLogger.log("NOTICE", actor.getUsername(), "User deleted: " + target);
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("UserService.delete", e);
             return GENERIC_ERROR;
         }
     }
@@ -87,11 +90,20 @@ public class UserService {
                 return "You cannot lock your own account.";
             }
             boolean currentlyLocked = t.getRole() == 1 || t.getLocked() == 1;
-            db.setUserRole(t.getUsername(), currentlyLocked ? 2 : 1);
-            SecurityLogger.log("NOTICE", actor.getUsername(),
-                    (currentlyLocked ? "User unlocked (set to Client): " : "User locked: ") + t.getUsername());
+            if (currentlyLocked) {
+                if (!db.unlockUser(t.getUsername())) {
+                    return "Could not update the account.";
+                }
+                User restored = db.getUserByUsername(t.getUsername());
+                SecurityLogger.log("NOTICE", actor.getUsername(),
+                        "User unlocked: " + t.getUsername() + " (role " + (restored == null ? "unknown" : restored.getRole()) + ")");
+            } else {
+                db.setUserRole(t.getUsername(), 1);
+                SecurityLogger.log("NOTICE", actor.getUsername(), "User locked: " + t.getUsername());
+            }
             return null;
         } catch (Exception e) {
+            ErrorHandler.handle("UserService.toggleLock", e);
             return GENERIC_ERROR;
         }
     }

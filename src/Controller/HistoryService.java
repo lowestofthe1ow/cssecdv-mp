@@ -25,6 +25,7 @@ public class HistoryService {
                 return db.getHistoryByUser(actor.getUsername());
             }
         } catch (Exception e) {
+            ErrorHandler.handle("HistoryService.view", e);
         }
         return new ArrayList<History>();
     }
