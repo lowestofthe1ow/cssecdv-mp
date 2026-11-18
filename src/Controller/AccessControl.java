@@ -32,6 +32,7 @@ public final class AccessControl {
     public static final String USER_CHANGE_PASSWORD = "user.changepassword";
 
     public static final String LOGS_VIEW = "logs.view";
+    public static final String LOGS_CLEAR = "logs.clear";
 
     private static final Map<String, int[]> RULES = new HashMap<String, int[]>();
 
@@ -62,6 +63,7 @@ public final class AccessControl {
         RULES.put(USER_CHANGE_PASSWORD, new int[]{5});
 
         RULES.put(LOGS_VIEW, new int[]{5});
+        RULES.put(LOGS_CLEAR, new int[]{5});
     }
 
     private static SQLite db;
@@ -97,6 +99,7 @@ public final class AccessControl {
             int role = fresh.getRole();
             return (role >= 2 && role <= 5) ? role : 0;
         } catch (Exception e) {
+            ErrorHandler.handle("AccessControl.currentRole", e);
             return 0;
         }
     }
@@ -105,6 +108,7 @@ public final class AccessControl {
         try {
             return roleAllowed(currentRole(user), resource);
         } catch (Exception e) {
+            ErrorHandler.handle("AccessControl.isAllowed", e);
             return false;
         }
     }

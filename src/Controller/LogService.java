@@ -13,6 +13,21 @@ public class LogService {
         this.db = db;
     }
 
+    /** Admin-only log management. A fresh authorization check precedes each clear. */
+    public boolean clear(User actor) {
+        try {
+            if (!AccessControl.check(actor, AccessControl.LOGS_CLEAR)) {
+                return false;
+            }
+            db.clearLogs();
+            SecurityLogger.log("LOGS_CLEARED", actor.getUsername(), "Security logs cleared by administrator");
+            return true;
+        } catch (Exception ex) {
+            ErrorHandler.handle("LogService.clear", ex);
+            return false;
+        }
+    }
+
     public ArrayList<Logs> view(User actor) {
         try {
             if (!AccessControl.check(actor, AccessControl.LOGS_VIEW)) {

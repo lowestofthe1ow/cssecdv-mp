@@ -39,7 +39,11 @@ public class UserService {
                 SecurityLogger.log("VALIDATION_FAIL", actor.getUsername(), "Role code rejected by validation");
                 return "Role must be a number from 1 to 5.";
             }
-            if (!AuthService.isValidUsername(target) || db.getUserByUsername(target) == null) {
+            if (!AuthService.isValidUsername(target)) {
+                SecurityLogger.log("VALIDATION_FAIL", actor.getUsername(), "Target username rejected by validation");
+                return "User not found.";
+            }
+            if (db.getUserByUsername(target) == null) {
                 return "User not found.";
             }
             if (isSelf(actor, target)) {
@@ -59,7 +63,11 @@ public class UserService {
             if (!AccessControl.check(actor, AccessControl.USER_DELETE)) {
                 return DENIED;
             }
-            if (!AuthService.isValidUsername(target) || db.getUserByUsername(target) == null) {
+            if (!AuthService.isValidUsername(target)) {
+                SecurityLogger.log("VALIDATION_FAIL", actor.getUsername(), "Target username rejected by validation");
+                return "User not found.";
+            }
+            if (db.getUserByUsername(target) == null) {
                 return "User not found.";
             }
             if (isSelf(actor, target)) {
@@ -80,6 +88,7 @@ public class UserService {
                 return DENIED;
             }
             if (!AuthService.isValidUsername(target)) {
+                SecurityLogger.log("VALIDATION_FAIL", actor.getUsername(), "Target username rejected by validation");
                 return "User not found.";
             }
             User t = db.getUserByUsername(target);

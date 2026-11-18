@@ -14,15 +14,15 @@ public class Product {
     private int id;
     private String name;
     private int stock;
-    private float price;
+    private double price;
     
-    public Product(String name, int stock, float price){
+    public Product(String name, int stock, double price){
         this.name = name;
         this.stock = stock;
         this.price = price;
     }
     
-    public Product(int id, String name, int stock, float price){
+    public Product(int id, String name, int stock, double price){
         this.id = id;
         this.name = name;
         this.stock = stock;
@@ -53,11 +53,11 @@ public class Product {
         this.stock = stock;
     }
 
-    public float getPrice() {
+    public double getPrice() {
         return price;
     }
 
-    public void setPrice(float price) {
+    public void setPrice(double price) {
         this.price = price;
     }
 }

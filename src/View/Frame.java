@@ -3,6 +3,7 @@ package View;
 import Controller.AccessControl;
 import Controller.ErrorHandler;
 import Controller.AuthService;
+import Controller.SecurityLogger;
 import Controller.Main;
 import Model.User;
 import java.awt.BorderLayout;
@@ -222,6 +223,8 @@ public class Frame extends javax.swing.JFrame {
     public Main main;
     public User currentUser;
     private AuthService auth;
+    private javax.swing.Timer idleTimer;
+    private static final int IDLE_TIMEOUT_MS = 15 * 60 * 1000;
     public Login loginPnl = new Login();
     public Register registerPnl = new Register();
     
@@ -241,6 +244,19 @@ public class Frame extends javax.swing.JFrame {
         ErrorHandler.setFailsafe(this::logout);
         this.main = controller;
         this.auth = new AuthService(main.sqlite);
+        idleTimer = new javax.swing.Timer(IDLE_TIMEOUT_MS, new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                idleLogout();
+            }
+        });
+        idleTimer.setRepeats(false);
+        java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(new java.awt.event.AWTEventListener() {
+            public void eventDispatched(java.awt.AWTEvent evt) {
+                if (currentUser != null) {
+                    idleTimer.restart();
+                }
+            }
+        }, java.awt.AWTEvent.MOUSE_EVENT_MASK | java.awt.AWTEvent.MOUSE_MOTION_EVENT_MASK | java.awt.AWTEvent.KEY_EVENT_MASK);
         loginPnl.frame = this;
         registerPnl.frame = this;
         
@@ -274,7 +290,7 @@ public class Frame extends javax.swing.JFrame {
             logout();
             return;
         }
-        applyRoleAccess();
+        idleTimer.restart();
         if (AccessControl.PANEL_ADMIN.equals(home)) {
             adminHomePnl.showPnl("home");
         } else if (AccessControl.PANEL_MANAGER.equals(home)) {
@@ -286,17 +302,6 @@ public class Frame extends javax.swing.JFrame {
         }
         contentView.show(Content, home);
         frameView.show(Container, "homePnl");
-    }
-    
-    private void applyRoleAccess(){
-        adminBtn.setVisible(AccessControl.isAllowed(currentUser, AccessControl.PANEL_ADMIN));
-        managerBtn.setVisible(AccessControl.isAllowed(currentUser, AccessControl.PANEL_MANAGER));
-        staffBtn.setVisible(AccessControl.isAllowed(currentUser, AccessControl.PANEL_STAFF));
-        clientBtn.setVisible(AccessControl.isAllowed(currentUser, AccessControl.PANEL_CLIENT));
-        adminHomePnl.applyAccess(currentUser);
-        managerHomePnl.applyAccess(currentUser);
-        staffHomePnl.applyAccess(currentUser);
-        clientHomePnl.applyAccess(currentUser);
     }
     
     public boolean authorize(String resource){
@@ -326,6 +331,9 @@ public class Frame extends javax.swing.JFrame {
     }
     
     public void loginNav(){
+        if (idleTimer != null) {
+            idleTimer.stop();
+        }
         loginPnl.clearFields();
         frameView.show(Container, "loginPnl");
     }
@@ -335,8 +343,24 @@ public class Frame extends javax.swing.JFrame {
     }
     
     public void logout(){
+        endSession("LOGOUT", "User logged out");
+    }
+    
+    private void endSession(String event, String desc){
+        if (currentUser != null) {
+            SecurityLogger.log(event, currentUser.getUsername(), desc);
+        }
         currentUser = null;
         loginNav();
+    }
+    
+    private void idleLogout(){
+        if (currentUser == null) {
+            return;
+        }
+        endSession("SESSION_TIMEOUT", "Session ended after inactivity");
+        javax.swing.JOptionPane.showMessageDialog(this, "You were logged out due to inactivity.",
+                "Session Expired", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
     
     public boolean loginAction(String username, char[] password){

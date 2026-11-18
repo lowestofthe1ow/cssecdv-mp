@@ -49,10 +49,6 @@ public class MgmtUser extends javax.swing.JPanel {
 //      LOAD CONTENTS
         Frame frame = Frame.of(this);
         User actor = frame == null ? null : frame.currentUser;
-        editRoleBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.USER_EDIT_ROLE));
-        deleteBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.USER_DELETE));
-        lockBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.USER_LOCK));
-        chgpassBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.USER_CHANGE_PASSWORD));
         ArrayList<User> users = new UserService(sqlite).list(actor);
         for(int nCtr = 0; nCtr < users.size(); nCtr++){
             tableModel.addRow(new Object[]{

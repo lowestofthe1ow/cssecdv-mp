@@ -10,8 +10,8 @@ public final class Validator {
     private static final Pattern PRODUCT  = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9 ]{0,29}$");
     private static final Pattern SEARCH   = Pattern.compile("^[A-Za-z0-9 ]{0,30}$");
     private static final Pattern ROLE     = Pattern.compile("^[1-5]$");
-    private static final Pattern WHOLE    = Pattern.compile("^[0-9]{1,6}$");
-    private static final Pattern MONEY    = Pattern.compile("^[0-9]{1,7}(\\.[0-9]{1,2})?$");
+    private static final Pattern WHOLE    = Pattern.compile("^(0|[1-9][0-9]{0,5})$");
+    private static final Pattern MONEY    = Pattern.compile("^(0|[1-9][0-9]{0,6})(\\.[0-9]{1,2})?$");
 
     private Validator() {}
 

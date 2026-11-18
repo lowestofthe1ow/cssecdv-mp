@@ -56,12 +56,6 @@ public class ClientHome extends javax.swing.JPanel {
         contentView.show(Content, panelName);
     }
     
-    public void applyAccess(User user){
-        usersBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_USERS));
-        productsBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_PRODUCTS));
-        historyBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_HISTORY));
-        logsBtn.setVisible(Controller.AccessControl.isAllowed(user, Controller.AccessControl.SCREEN_LOGS));
-    }
 
     /**
      * This method is called from within the constructor to initialize the form.

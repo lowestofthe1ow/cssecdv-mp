@@ -48,10 +48,6 @@ public class MgmtProduct extends javax.swing.JPanel {
 //      LOAD CONTENTS
         Frame frame = Frame.of(this);
         User actor = frame == null ? null : frame.currentUser;
-        purchaseBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_PURCHASE));
-        addBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_ADD));
-        editBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_EDIT));
-        deleteBtn.setVisible(AccessControl.isAllowed(actor, AccessControl.PRODUCT_DELETE));
         ArrayList<Product> products = new ProductService(sqlite).list(actor);
         for(int nCtr = 0; nCtr < products.size(); nCtr++){
             tableModel.addRow(new Object[]{

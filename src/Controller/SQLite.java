@@ -231,6 +231,14 @@ public class SQLite {
         }
     }
 
+    /** Removes logs only when requested through the role-checked LogService. */
+    void clearLogs() throws SQLException {
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement("DELETE FROM logs")) {
+            pstmt.executeUpdate();
+        }
+    }
+
     public void addLogs(String event, String username, String desc, String timestamp) {
         String sql = "INSERT INTO logs(event,username,desc,timestamp) VALUES(?,?,?,?)";
         
@@ -323,7 +331,7 @@ public class SQLite {
     }
 
     public ArrayList<History> getHistory(){
-        String sql = "SELECT id, username, name, stock, timestamp, unit_price FROM history";
+        String sql = "SELECT id, username, name, stock, timestamp, unit_price FROM history ORDER BY id DESC LIMIT 1000";
         ArrayList<History> histories = new ArrayList<History>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -366,7 +374,7 @@ public class SQLite {
     }
     
     ArrayList<Logs> getLogs(){
-        String sql = "SELECT id, event, username, desc, timestamp FROM logs";
+        String sql = "SELECT id, event, username, desc, timestamp FROM logs ORDER BY id DESC LIMIT 1000";
         ArrayList<Logs> logs = new ArrayList<Logs>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -398,7 +406,7 @@ public class SQLite {
                 products.add(new Product(rs.getInt("id"),
                                    rs.getString("name"),
                                    rs.getInt("stock"),
-                                   rs.getFloat("price")));
+                                   rs.getDouble("price")));
             }
         } catch (Exception ex) {
             ErrorHandler.handle("SQLite.getProduct", ex);
@@ -476,7 +484,7 @@ public class SQLite {
                    + "last_attempt = ?, last_status = 'FAILED', "
                    + "role = CASE WHEN failed_attempts + 1 >= ? THEN 1 ELSE role END, "
                    + "locked = CASE WHEN failed_attempts + 1 >= ? THEN 1 ELSE locked END "
-                   + "WHERE username = ?";
+                   + "WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, maxAttempts);
@@ -489,7 +497,7 @@ public class SQLite {
     }
 
     public void recordLoginSuccess(String username, String timestamp) throws SQLException {
-        String sql = "UPDATE users SET failed_attempts = 0, last_attempt = ?, last_status = 'SUCCESS' WHERE username = ?";
+        String sql = "UPDATE users SET failed_attempts = 0, last_attempt = ?, last_status = 'SUCCESS' WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
             PreparedStatement pstmt = conn.prepareStatement(sql)){
             pstmt.setString(1, timestamp);
@@ -499,7 +507,7 @@ public class SQLite {
     }
     
     public void updatePassword(String username, String passwordHash, String salt) throws SQLException {
-        String sql = "UPDATE users SET password = ?, salt = ? WHERE username = ?";
+        String sql = "UPDATE users SET password = ?, salt = ? WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
             PreparedStatement pstmt = conn.prepareStatement(sql)){
             pstmt.setString(1, passwordHash);
@@ -516,7 +524,7 @@ public class SQLite {
     public boolean unlockUser(String username) throws SQLException {
         String sql = "UPDATE users SET role = CASE WHEN previous_role BETWEEN 2 AND 5 "
                    + "THEN previous_role ELSE 2 END, locked = 0, failed_attempts = 0 "
-                   + "WHERE username = ? AND (role = 1 OR locked = 1)";
+                   + "WHERE username = ? COLLATE NOCASE AND (role = 1 OR locked = 1)";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -525,7 +533,7 @@ public class SQLite {
     }
 
     public void removeUser(String username) {
-        String sql = "DELETE FROM users WHERE username = ?";
+        String sql = "DELETE FROM users WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -538,6 +546,7 @@ public class SQLite {
     public void initUsersSchema() {
         boolean hasSalt = false;
         boolean hasPreviousRole = false;
+        boolean schemaChecked = false;
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement("PRAGMA table_info(users)");
              ResultSet rs = pstmt.executeQuery()) {
@@ -549,13 +558,22 @@ public class SQLite {
                     hasPreviousRole = true;
                 }
             }
+            schemaChecked = true;
         } catch (Exception ex) {
             ErrorHandler.handle("SQLite.initUsersSchema", ex);
         }
-        if (!hasSalt) {
+        if (schemaChecked && !hasSalt) {
             dropUserTable();
         }
         createUserTable();
+
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement idx = conn.prepareStatement(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase ON users(username COLLATE NOCASE)")) {
+            idx.execute();
+        } catch (Exception ex) {
+            ErrorHandler.handle("SQLite.initUsersSchema.index", ex);
+        }
 
         if (hasSalt && !hasPreviousRole) {
             try (Connection conn = DriverManager.getConnection(driverURL);
@@ -581,7 +599,7 @@ public class SQLite {
                 if (rs.next()) {
                     product = new Product(rs.getString("name"),
                                            rs.getInt("stock"),
-                                           rs.getFloat("price"));
+                                           rs.getDouble("price"));
                 }
             }
         } catch (Exception ex) {
@@ -594,7 +612,7 @@ public class SQLite {
         String sql = "UPDATE users SET "
                    + "previous_role = CASE WHEN ? = 1 THEN "
                    + "CASE WHEN role BETWEEN 2 AND 5 THEN role ELSE previous_role END ELSE ? END, "
-                   + "role = ?, locked = ?, failed_attempts = 0 WHERE username = ?";
+                   + "role = ?, locked = ?, failed_attempts = 0 WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, role);

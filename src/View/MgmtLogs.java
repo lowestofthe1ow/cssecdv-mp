@@ -6,9 +6,11 @@
 package View;
 
 import Controller.LogService;
+import Controller.AccessControl;
 import Controller.SQLite;
 import Model.Logs;
 import java.util.ArrayList;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -25,7 +27,7 @@ public class MgmtLogs extends javax.swing.JPanel {
         this.sqlite = sqlite;
         tableModel = (DefaultTableModel)table.getModel();
         table.getTableHeader().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-        // Audit logs are append-only from the UI; destructive/debug controls are unavailable.
+        // Only the administrator may use log management; debug mode remains unavailable.
         clearBtn.setVisible(false);
         debugBtn.setVisible(false);
     }
@@ -39,8 +41,10 @@ public class MgmtLogs extends javax.swing.JPanel {
 //      LOAD CONTENTS
         Frame frame = Frame.of(this);
         if (frame == null) {
+            clearBtn.setVisible(false);
             return;
         }
+        clearBtn.setVisible(AccessControl.isAllowed(frame.currentUser, AccessControl.LOGS_CLEAR));
         ArrayList<Logs> logs = new LogService(sqlite).view(frame.currentUser);
         for(int nCtr = 0; nCtr < logs.size(); nCtr++){
             tableModel.addRow(new Object[]{
@@ -139,7 +143,20 @@ public class MgmtLogs extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void clearBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearBtnActionPerformed
-        // Intentionally unavailable: security audit records must not be cleared from the UI.
+        Frame frame = Frame.of(this);
+        if (frame == null || !AccessControl.check(frame.currentUser, AccessControl.LOGS_CLEAR)) {
+            return;
+        }
+        int choice = JOptionPane.showConfirmDialog(this, "Clear security logs?", "CLEAR LOGS",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.YES_OPTION) {
+            return;
+        }
+        if (new LogService(sqlite).clear(frame.currentUser)) {
+            init();
+        } else {
+            JOptionPane.showMessageDialog(this, "Unable to clear logs.", "LOGS", JOptionPane.WARNING_MESSAGE);
+        }
     }//GEN-LAST:event_clearBtnActionPerformed
 
     private void debugBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugBtnActionPerformed
