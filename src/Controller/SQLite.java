@@ -464,14 +464,6 @@ public class SQLite {
         }
     }
     
-    public int countUsers() throws SQLException {
-        try (Connection conn = DriverManager.getConnection(driverURL);
-            PreparedStatement pstmt = conn.prepareStatement("SELECT COUNT(*) FROM users");
-            ResultSet rs = pstmt.executeQuery()){
-            return rs.next() ? rs.getInt(1) : 0;
-        }
-    }
-    
     public void addUser(String username, String passwordHash, String salt, int role) throws SQLException {
         String sql = "INSERT INTO users(username,password,salt,role,previous_role) VALUES(?,?,?,?,?)";
         try (Connection conn = DriverManager.getConnection(driverURL);
