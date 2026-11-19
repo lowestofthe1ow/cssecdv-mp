@@ -7,9 +7,8 @@ import java.util.Arrays;
 import java.sql.SQLException;
 
 public class AuthService {
-
     public static final int MAX_ATTEMPTS = 5;
-    public static final String GENERIC_LOGIN_ERROR = "Invalid username and/or password";
+    public static final String GENERIC_LOGIN_ERROR = "Invalid username and/or password.";
     public static final String GENERIC_ERROR = "Something went wrong. Please try again.";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -45,6 +44,10 @@ public class AuthService {
         return Validator.username(u);
     }
 
+    private static boolean isActiveUser(User u) {
+        return u != null && u.getRole() >= 2 && u.getRole() <= 5 && u.getLocked() == 0;
+    }
+
     /**
      * Authenticates a user, enforcing lockout, password verification, and audit logging.
      * @param username account username
@@ -52,20 +55,20 @@ public class AuthService {
      */
     public LoginResult login(String username, char[] password) {
         try {
-            if (!isValidUsername(username) || password == null
+            // Validate inputs first
+            boolean validUser = isValidUsername(username);
+            if (!validUser || password == null
                     || password.length == 0 || password.length > PasswordPolicy.MAX_LENGTH) {
                 PasswordUtil.dummyVerify();
                 SecurityLogger.log("VALIDATION_FAIL", "unknown", "Login input rejected by validation");
-                SecurityLogger.log("AUTH_FAIL", isValidUsername(username) ? username : "unknown",
-                        "Login failed: invalid input");
-                // A rejected password is still a failed login for an existing, active account.
-                // Invalid/unknown usernames have no account counter to update.
-                if (isValidUsername(username)) {
+                SecurityLogger.log("AUTH_FAIL", validUser ? username : "unknown", "Login failed: invalid input");
+                if (validUser) {
                     countFailedLogin(db.getUserByUsername(username));
                 }
                 return DENIED;
             }
 
+            // Check if user exists
             User u = db.getUserByUsername(username);
             if (u == null) {
                 PasswordUtil.dummyVerify();
@@ -74,18 +77,21 @@ public class AuthService {
             }
 
             boolean passwordOk = PasswordUtil.verify(password, u.getSalt(), u.getPassword());
-            int role = u.getRole();
 
-            if (role < 2 || role > 5 || u.getLocked() == 1) {
+            // Check if user is active/not disabled (in case of account lockouts)
+            if (!isActiveUser(u)) {
                 SecurityLogger.log("AUTH_FAIL", u.getUsername(), "Login blocked: account disabled, locked or invalid role");
                 return DENIED;
             }
+
+            // Validate password
             if (!passwordOk) {
                 countFailedLogin(u);
                 SecurityLogger.log("AUTH_FAIL", u.getUsername(), "Login failed: wrong password");
                 return DENIED;
             }
 
+            // Success
             db.recordLoginSuccess(u.getUsername(), now());
             SecurityLogger.log("AUTH_SUCCESS", u.getUsername(), "Login successful");
             u.setPassword(null);
@@ -98,18 +104,36 @@ public class AuthService {
         }
     }
 
-
-    /** Counts any failed login for an existing active account (including malformed passwords). */
+    /** Counts a failed authentication for an active account and logs ACCOUNT_LOCKED at the threshold. */
     private void countFailedLogin(User user) throws SQLException {
-        if (user == null || user.getRole() < 2 || user.getRole() > 5 || user.getLocked() == 1) {
+        if (!isActiveUser(user)) {
             return;
         }
+
+        // Let SQLite lockout user if failures >= MAX_ATTEMPTS
         db.recordLoginFailure(user.getUsername(), now(), MAX_ATTEMPTS);
-        User after = db.getUserByUsername(user.getUsername());
-        if (after != null && after.getRole() == 1) {
+        if (user.getFailedAttempts() + 1 >= MAX_ATTEMPTS) {
             SecurityLogger.log("ACCOUNT_LOCKED", user.getUsername(),
                     "Account disabled after " + MAX_ATTEMPTS + " consecutive failed logins");
         }
+    }
+
+    private String validateNewPassword(String actorName, String targetName, char[] pw, char[] confirm, String mismatchMsg) {
+        String policyError = PasswordPolicy.validate(pw, targetName);
+
+        // NOTE: actorName can be different if an admin is changing someone's password
+
+        if (policyError != null) {
+            SecurityLogger.log("VALIDATION_FAIL", actorName, "Password rejected by policy");
+            return policyError;
+        }
+
+        if (confirm == null || !Arrays.equals(pw, confirm)) {
+            SecurityLogger.log("VALIDATION_FAIL", actorName, "Password confirmation mismatch");
+            return mismatchMsg;
+        }
+
+        return null;
     }
 
     /**
@@ -119,27 +143,32 @@ public class AuthService {
      * @param confirm confirmation password characters
      */
     public String register(String username, char[] password, char[] confirm) {
+        // WARNING: This is only for generating Role 2 accounts. Admins can elevate roles afterward.
+
         try {
+            // Validate password
             if (!isValidUsername(username)) {
                 SecurityLogger.log("VALIDATION_FAIL", "unknown", "Registration username rejected");
                 return "Username must be 3-20 characters, letters and digits only.";
             }
-            String policyError = PasswordPolicy.validate(password);
-            if (policyError != null) {
-                SecurityLogger.log("VALIDATION_FAIL", username, "Registration password rejected by policy");
-                return policyError;
+
+            // Check if "Confirm password" matches
+            String pwError = validateNewPassword(username, username, password, confirm, "Passwords do not match.");
+
+            if (pwError != null) {
+                return pwError;
             }
-            if (confirm == null || !Arrays.equals(password, confirm)) {
-                SecurityLogger.log("VALIDATION_FAIL", username, "Registration password confirmation mismatch");
-                return "Passwords do not match.";
-            }
+
+            // Check for username availability
             if (db.getUserByUsername(username) != null) {
                 SecurityLogger.log("VALIDATION_FAIL", username, "Registration rejected: username unavailable");
                 return "Registration failed. Please choose a different username.";
             }
+
             String salt = PasswordUtil.newSalt();
             db.addUser(username, PasswordUtil.hash(password, salt), salt, 2);
             SecurityLogger.log("NOTICE", username, "User registration successful");
+
             return null;
         } catch (Exception e) {
             ErrorHandler.handle("AuthService.register", e);
@@ -147,7 +176,6 @@ public class AuthService {
         }
     }
 
-    
     /**
      * Changes a target user's password after verifying the actor's role and current password.
      * @param actor authenticated user performing the change
@@ -158,13 +186,16 @@ public class AuthService {
      */
     public String changePasswordFor(User actor, String targetUsername, char[] actorPw, char[] newPw, char[] confirm) {
         try {
-            if (actor == null || actorPw == null || targetUsername == null) {
+            // Everything has generic messages only
+
+            if (actor == null || actor.getUsername() == null || actorPw == null || targetUsername == null) {
                 SecurityLogger.log("VALIDATION_FAIL", actor == null ? "unknown" : actor.getUsername(),
                         "Password change required input missing");
                 return GENERIC_ERROR;
             }
+
             User a = db.getUserByUsername(actor.getUsername());
-            if (a == null || a.getRole() < 2 || a.getRole() > 5) {
+            if (!isActiveUser(a)) {
                 return GENERIC_ERROR;
             }
             if (!AccessControl.check(a, AccessControl.USER_CHANGE_PASSWORD)) {
@@ -176,41 +207,37 @@ public class AuthService {
                 return GENERIC_ERROR;
             }
             if (!PasswordUtil.verify(actorPw, a.getSalt(), a.getPassword())) {
-                db.recordLoginFailure(a.getUsername(), now(), MAX_ATTEMPTS);
+                countFailedLogin(a);
                 SecurityLogger.log("AUTH_FAIL", a.getUsername(), "Re-authentication failed during password change");
-                User afterFail = db.getUserByUsername(a.getUsername());
-                if (afterFail != null && afterFail.getRole() == 1) {
-                    SecurityLogger.log("ACCOUNT_LOCKED", a.getUsername(),
-                            "Account disabled after " + MAX_ATTEMPTS + " consecutive failed authentications");
-                }
                 return "Your current password is incorrect.";
             }
+
             SecurityLogger.log("AUTH_SUCCESS", a.getUsername(), "Re-authentication succeeded for password change");
+
             if (!isValidUsername(targetUsername)) {
                 SecurityLogger.log("VALIDATION_FAIL", a.getUsername(), "Password change target username rejected by validation");
                 return GENERIC_ERROR;
             }
+
             User t = db.getUserByUsername(targetUsername);
             if (t == null) {
                 return GENERIC_ERROR;
             }
-            String policyError = PasswordPolicy.validate(newPw);
-            if (policyError != null) {
-                SecurityLogger.log("VALIDATION_FAIL", a.getUsername(), "New password rejected by policy");
-                return policyError;
-            }
-            if (confirm == null || !Arrays.equals(newPw, confirm)) {
-                SecurityLogger.log("VALIDATION_FAIL", a.getUsername(), "Password change confirmation mismatch");
-                return "New passwords do not match.";
+
+            String pwError = validateNewPassword(a.getUsername(), t.getUsername(), newPw, confirm, "New passwords do not match.");
+            if (pwError != null) {
+                return pwError;
             }
             if (a.getUsername().equalsIgnoreCase(t.getUsername()) && Arrays.equals(newPw, actorPw)) {
                 SecurityLogger.log("VALIDATION_FAIL", a.getUsername(), "New password must differ from current password");
                 return "New password must be different from the current password.";
             }
+
             String salt = PasswordUtil.newSalt();
             db.updatePassword(t.getUsername(), PasswordUtil.hash(newPw, salt), salt);
             SecurityLogger.log("NOTICE", a.getUsername(),
                     "Password of " + t.getUsername() + " changed after re-authentication");
+
             return null;
         } catch (Exception e) {
             ErrorHandler.handle("AuthService.changePasswordFor", e);
@@ -221,34 +248,10 @@ public class AuthService {
     /** Returns true if the account does not exist or holds an inactive/disabled role. */
     public boolean isAccountDisabled(String username) {
         try {
-            User u = db.getUserByUsername(username);
-            return u == null || u.getRole() < 2 || u.getRole() > 5;
+            return !isActiveUser(db.getUserByUsername(username));
         } catch (Exception e) {
             ErrorHandler.handle("AuthService.isAccountDisabled", e);
             return true;
-        }
-    }
-
-    
-    /** Seeds default role accounts with salted PBKDF2 hashes when the users table is empty. */
-    public static void seedDefaultAccountsIfEmpty(SQLite db) {
-        try {
-            if (db.countUsers() > 0) {
-                return;
-            }
-            String[][] accounts = {
-                {"admin",    "Admin#2026!",   "5"},
-                {"manager",  "Manager#2026!", "4"},
-                {"staff",    "Staff#2026!",   "3"},
-                {"client1",  "Client#2026!",  "2"},
-                {"client2",  "Client#2027!",  "2"},
-            };
-            for (String[] a : accounts) {
-                String salt = PasswordUtil.newSalt();
-                db.addUser(a[0], PasswordUtil.hash(a[1].toCharArray(), salt), salt, Integer.parseInt(a[2]));
-            }
-        } catch (Exception e) {
-            ErrorHandler.handle("AuthService.seedDefaultAccountsIfEmpty", e);
         }
     }
 }

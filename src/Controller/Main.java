@@ -29,7 +29,5 @@ public class Main {
         sqlite.createProductTable();
         sqlite.createHistoryTable();
         sqlite.seedSampleProducts();
-
-        AuthService.seedDefaultAccountsIfEmpty(sqlite);
     }
 }

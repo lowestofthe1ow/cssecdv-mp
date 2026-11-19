@@ -12,6 +12,8 @@ public final class PasswordUtil {
     private static final int ITERATIONS = 120_000;
     private static final int KEY_BITS = 256;
     private static final int SALT_BYTES = 16;
+
+    /* Java CSPRNG, best practice for secure random number generation. */
     private static final SecureRandom RNG = new SecureRandom();
 
     private static final String DUMMY_SALT = Base64.getEncoder()
