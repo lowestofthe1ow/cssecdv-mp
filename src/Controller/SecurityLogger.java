@@ -10,10 +10,17 @@ public final class SecurityLogger {
 
     private SecurityLogger() {}
 
+    /** Binds the database handle used to persist security log entries. */
     public static void init(SQLite sqlite) {
         db = sqlite;
     }
 
+    /**
+     * Records a timestamped security event in the audit log without throwing on failure.
+     * @param event event category (e.g., AUTH_FAIL, ACCESS_DENIED)
+     * @param username actor username, or "unknown" if null
+     * @param desc human-readable event description
+     */
     public static void log(String event, String username, String desc) {
         try {
             if (db != null) {

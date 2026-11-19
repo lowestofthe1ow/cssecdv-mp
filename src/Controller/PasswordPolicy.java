@@ -8,6 +8,7 @@ public final class PasswordPolicy {
     private PasswordPolicy() {}
 
     
+    /** Validates password length (8-64) and complexity (upper, lower, digit, symbol, no spaces). */
     public static String validate(char[] pw) {
         if (pw == null || pw.length < MIN_LENGTH || pw.length > MAX_LENGTH) {
             return "Password must be between " + MIN_LENGTH + " and " + MAX_LENGTH + " characters.";

@@ -12,10 +12,12 @@ public class HistoryService {
         this.db = db;
     }
 
+    /** Validates a history search query against the allowed whitelist. */
     public static boolean isValidSearch(String query) {
         return Validator.search(query);
     }
 
+    /** Returns all history for managers or own-user history for clients. */
     public ArrayList<History> view(User actor) {
         try {
             if (AccessControl.isAllowed(actor, AccessControl.HISTORY_VIEW_ALL)) {
@@ -30,6 +32,11 @@ public class HistoryService {
         return new ArrayList<History>();
     }
 
+    /**
+     * Filters role-scoped purchase history by username or product name after validating the query.
+     * @param actor authenticated user requesting the search
+     * @param query search string (0-30 alphanumeric/space chars)
+     */
     public ArrayList<History> search(User actor, String query) {
         ArrayList<History> result = new ArrayList<History>();
         if (!isValidSearch(query)) {

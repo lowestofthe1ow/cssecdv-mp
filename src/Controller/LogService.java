@@ -28,6 +28,7 @@ public class LogService {
         }
     }
 
+    /** Returns audit log entries only when the actor is authorized to view logs. */
     public ArrayList<Logs> view(User actor) {
         try {
             if (!AccessControl.check(actor, AccessControl.LOGS_VIEW)) {

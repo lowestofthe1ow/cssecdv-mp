@@ -19,12 +19,18 @@ public final class PasswordUtil {
 
     private PasswordUtil() {}
 
+    /** Generates a 16-byte random salt encoded as Base64. */
     public static String newSalt() {
         byte[] salt = new byte[SALT_BYTES];
         RNG.nextBytes(salt);
         return Base64.getEncoder().encodeToString(salt);
     }
 
+    /**
+     * Derives a Base64-encoded PBKDF2-HMAC-SHA256 hash and clears the key spec afterward.
+     * @param password plaintext password characters
+     * @param saltB64 Base64-encoded salt bytes
+     */
     public static String hash(char[] password, String saltB64) {
         PBEKeySpec spec = new PBEKeySpec(password, Base64.getDecoder().decode(saltB64), ITERATIONS, KEY_BITS);
         try {
@@ -38,6 +44,12 @@ public final class PasswordUtil {
     }
 
     
+    /**
+     * Verifies a password against a stored Base64 salt and hash in constant time.
+     * @param password candidate password characters
+     * @param saltB64 stored Base64 salt
+     * @param storedHashB64 stored Base64 PBKDF2 hash
+     */
     public static boolean verify(char[] password, String saltB64, String storedHashB64) {
         if (saltB64 == null || storedHashB64 == null) {
             return false;
@@ -47,6 +59,7 @@ public final class PasswordUtil {
         return MessageDigest.isEqual(actual, expected);
     }
 
+    /** Performs a dummy PBKDF2 hash to equalize timing on invalid or unknown-user logins. */
     public static void dummyVerify() {
         try {
             hash("dummy-password".toCharArray(), DUMMY_SALT);

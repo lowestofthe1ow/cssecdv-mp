@@ -280,6 +280,7 @@ public class Frame extends javax.swing.JFrame {
         this.setVisible(true);
     }
     
+    /** Routes the authenticated user to their role's home panel and starts the idle timer. */
     public void mainNav(){
         if (currentUser == null) {
             loginNav();
@@ -304,6 +305,7 @@ public class Frame extends javax.swing.JFrame {
         frameView.show(Container, "homePnl");
     }
     
+    /** Verifies access to a resource, showing an error dialog or logging out inactive users on failure. */
     public boolean authorize(String resource){
         if (currentUser == null) {
             loginNav();
@@ -325,6 +327,11 @@ public class Frame extends javax.swing.JFrame {
         return (w instanceof Frame) ? (Frame) w : null;
     }
     
+    /**
+     * Convenience helper for child panels to enforce authorization via their parent Frame.
+     * @param component child Swing component inside the Frame
+     * @param resource resource constant from {@link AccessControl}
+     */
     public static boolean guard(java.awt.Component component, String resource){
         Frame f = of(component);
         return f != null && f.authorize(resource);
@@ -342,6 +349,7 @@ public class Frame extends javax.swing.JFrame {
         frameView.show(Container, "registerPnl");
     }
     
+    /** Logs out the current user, records a LOGOUT audit event, and returns to the login panel. */
     public void logout(){
         endSession("LOGOUT", "User logged out");
     }
@@ -363,6 +371,11 @@ public class Frame extends javax.swing.JFrame {
                 "Session Expired", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
     
+    /**
+     * Authenticates credentials via AuthService, starts the session, and shows last-login info.
+     * @param username entered username
+     * @param password entered password characters
+     */
     public boolean loginAction(String username, char[] password){
         AuthService.LoginResult r = auth.login(username, password);
         if (!r.success) {
@@ -380,6 +393,12 @@ public class Frame extends javax.swing.JFrame {
         return true;
     }
     
+    /**
+     * Submits a new account registration via AuthService and displays the result.
+     * @param username desired username
+     * @param password entered password characters
+     * @param confpass confirmation password characters
+     */
     public boolean registerAction(String username, char[] password, char[] confpass){
         String error = auth.register(username, password, confpass);
         if (error != null) {
@@ -392,6 +411,13 @@ public class Frame extends javax.swing.JFrame {
         return true;
     }
     
+    /**
+     * Delegates password change with re-authentication and logs out if the actor becomes disabled.
+     * @param targetUsername account whose password is being changed
+     * @param currentPw current user's password for re-authentication
+     * @param newPw new password characters
+     * @param confirm confirmation of the new password
+     */
     public String changeUserPassword(String targetUsername, char[] currentPw, char[] newPw, char[] confirm){
         if (currentUser == null) {
             loginNav();

@@ -40,6 +40,7 @@ public class ProductService {
         return null;
     }
 
+    /** Returns the product catalogue if the actor is authorized to view products. */
     public ArrayList<Product> list(User actor) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_VIEW)) {
@@ -52,6 +53,12 @@ public class ProductService {
         }
     }
 
+    /**
+     * Validates and executes a client product purchase, recording stock deduction and history.
+     * @param actor authenticated client user
+     * @param productName product name to purchase
+     * @param qtyText quantity text (1 to MAX_STOCK)
+     */
     public String purchase(User actor, String productName, String qtyText) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_PURCHASE)) {
@@ -80,6 +87,13 @@ public class ProductService {
         }
     }
 
+    /**
+     * Validates and adds a new product when requested by authorized staff or managers.
+     * @param actor authenticated staff or manager
+     * @param name unique product name
+     * @param stockText initial stock count
+     * @param priceText positive unit price
+     */
     public String addProduct(User actor, String name, String stockText, String priceText) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_ADD)) {
@@ -98,6 +112,14 @@ public class ProductService {
         }
     }
 
+    /**
+     * Validates and updates an existing product's name, stock, and price.
+     * @param actor authenticated staff or manager
+     * @param oldName current product name
+     * @param name updated product name
+     * @param stockText updated stock count
+     * @param priceText updated positive unit price
+     */
     public String editProduct(User actor, String oldName, String name, String stockText, String priceText) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_EDIT)) {
@@ -122,6 +144,11 @@ public class ProductService {
         }
     }
 
+    /**
+     * Deletes a product by name after checking authorization and input validity.
+     * @param actor authenticated staff or manager
+     * @param name product name to delete
+     */
     public String deleteProduct(User actor, String name) {
         try {
             if (!AccessControl.check(actor, AccessControl.PRODUCT_DELETE)) {

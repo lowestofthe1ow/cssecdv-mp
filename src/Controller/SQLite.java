@@ -297,6 +297,13 @@ public class SQLite {
         }
     }
     
+    /**
+     * Atomically deducts product stock and inserts a price-snapshotted history record.
+     * @param username buyer username
+     * @param name product name
+     * @param qty positive quantity to purchase
+     * @param timestamp formatted purchase timestamp
+     */
     public boolean purchaseProduct(String username, String name, int qty, String timestamp) throws SQLException {
         try (Connection conn = DriverManager.getConnection(driverURL)) {
             conn.setAutoCommit(false);
@@ -445,6 +452,7 @@ public class SQLite {
         return users;
     }
     
+    /** Fetches a user record by username using case-insensitive matching. */
     public User getUserByUsername(String username) throws SQLException {
         String sql = "SELECT " + USER_COLS + " FROM users WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -477,6 +485,12 @@ public class SQLite {
         }
     }
     
+    /**
+     * Increments failed_attempts and locks the account at Role 1 once maxAttempts is reached.
+     * @param username target username
+     * @param timestamp formatted attempt timestamp
+     * @param maxAttempts failure threshold before locking
+     */
     public void recordLoginFailure(String username, String timestamp, int maxAttempts) throws SQLException {
         String sql = "UPDATE users SET failed_attempts = failed_attempts + 1, "
                    + "previous_role = CASE WHEN failed_attempts + 1 >= ? AND role BETWEEN 2 AND 5 "
@@ -496,6 +510,11 @@ public class SQLite {
         }
     }
 
+    /**
+     * Resets failed_attempts and records the latest successful login timestamp.
+     * @param username target username
+     * @param timestamp formatted login timestamp
+     */
     public void recordLoginSuccess(String username, String timestamp) throws SQLException {
         String sql = "UPDATE users SET failed_attempts = 0, last_attempt = ?, last_status = 'SUCCESS' WHERE username = ? COLLATE NOCASE";
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -521,6 +540,7 @@ public class SQLite {
         setUserRole(username, role);
     }
 
+    /** Restores a locked/disabled account to its previous_role and clears lockout counters. */
     public boolean unlockUser(String username) throws SQLException {
         String sql = "UPDATE users SET role = CASE WHEN previous_role BETWEEN 2 AND 5 "
                    + "THEN previous_role ELSE 2 END, locked = 0, failed_attempts = 0 "
@@ -543,6 +563,7 @@ public class SQLite {
         }
     }
     
+    /** Initializes and migrates the users table and case-insensitive username index safely. */
     public void initUsersSchema() {
         boolean hasSalt = false;
         boolean hasPreviousRole = false;
@@ -608,6 +629,11 @@ public class SQLite {
         return product;
     }
     
+    /**
+     * Updates a user's role, syncing locked status and preserving previous_role when disabling.
+     * @param username target username
+     * @param role new role code (1-5)
+     */
     public boolean setUserRole(String username, int role) throws SQLException {
         String sql = "UPDATE users SET "
                    + "previous_role = CASE WHEN ? = 1 THEN "

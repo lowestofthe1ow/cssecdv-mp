@@ -9,19 +9,30 @@ public final class ErrorHandler {
 
     private ErrorHandler() {}
 
+    /** Registers the recovery callback invoked on unrecoverable uncaught exceptions. */
     public static void setFailsafe(Runnable r) { failsafe = r; }
 
-    // Internal record only: location + exception class, never message or stack trace.
+    /**
+     * Logs only the location and exception class name without leaking messages or stack traces.
+     * @param where method or component identifier
+     * @param t thrown exception or error
+     */
     public static void handle(String where, Throwable t) {
         SecurityLogger.log("ERROR", "system", where + ": " + t.getClass().getSimpleName());
     }
 
-    // For view handlers: log, show a generic dialog, return to a safe state.
+    /**
+     * Logs an error internally and displays a generic error dialog to the user.
+     * @param parent parent Swing component for dialog positioning
+     * @param where method or component identifier
+     * @param t thrown exception or error
+     */
     public static void report(java.awt.Component parent, String where, Throwable t) {
         handle(where, t);
         JOptionPane.showMessageDialog(parent, GENERIC_MESSAGE, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    /** Installs a global uncaught-exception handler that triggers the failsafe and shows a generic dialog. */
     public static void install() {
         Thread.setDefaultUncaughtExceptionHandler((th, ex) -> {
             handle("uncaught", ex);

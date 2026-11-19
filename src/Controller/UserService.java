@@ -18,6 +18,7 @@ public class UserService {
         return actor != null && actor.getUsername() != null && actor.getUsername().equalsIgnoreCase(target);
     }
 
+    /** Returns all user accounts if the actor is authorized to view users. */
     public ArrayList<User> list(User actor) {
         try {
             if (!AccessControl.check(actor, AccessControl.USER_VIEW)) {
@@ -30,6 +31,12 @@ public class UserService {
         }
     }
 
+    /**
+     * Updates another user's role code (1-5) after admin authorization and validation.
+     * @param actor authenticated administrator
+     * @param target username to modify (must differ from actor)
+     * @param roleText new role code ("1"-"5")
+     */
     public String changeRole(User actor, String target, String roleText) {
         try {
             if (!AccessControl.check(actor, AccessControl.USER_EDIT_ROLE)) {
@@ -58,6 +65,11 @@ public class UserService {
         }
     }
 
+    /**
+     * Deletes another user's account after admin authorization and validation.
+     * @param actor authenticated administrator
+     * @param target username to delete (must differ from actor)
+     */
     public String delete(User actor, String target) {
         try {
             if (!AccessControl.check(actor, AccessControl.USER_DELETE)) {
@@ -82,6 +94,11 @@ public class UserService {
         }
     }
 
+    /**
+     * Locks an active user (to Role 1) or unlocks a locked user back to their previous role.
+     * @param actor authenticated administrator
+     * @param target username to lock or unlock (must differ from actor)
+     */
     public String toggleLock(User actor, String target) {
         try {
             if (!AccessControl.check(actor, AccessControl.USER_LOCK)) {

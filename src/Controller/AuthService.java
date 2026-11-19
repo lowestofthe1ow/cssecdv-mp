@@ -40,11 +40,16 @@ public class AuthService {
         return LocalDateTime.now().format(TS);
     }
 
+    /** Checks whether a username matches the alphanumeric 3-20 character whitelist. */
     public static boolean isValidUsername(String u) {
         return Validator.username(u);
     }
 
-    
+    /**
+     * Authenticates a user, enforcing lockout, password verification, and audit logging.
+     * @param username account username
+     * @param password plaintext password characters (caller clears after use)
+     */
     public LoginResult login(String username, char[] password) {
         try {
             if (!isValidUsername(username) || password == null
@@ -107,6 +112,12 @@ public class AuthService {
         }
     }
 
+    /**
+     * Validates and registers a new Role 2 account with a salted PBKDF2 hash.
+     * @param username desired username (3-20 alphanumeric chars)
+     * @param password password characters
+     * @param confirm confirmation password characters
+     */
     public String register(String username, char[] password, char[] confirm) {
         try {
             if (!isValidUsername(username)) {
@@ -137,6 +148,14 @@ public class AuthService {
     }
 
     
+    /**
+     * Changes a target user's password after verifying the actor's role and current password.
+     * @param actor authenticated user performing the change
+     * @param targetUsername username whose password is being updated
+     * @param actorPw actor's current password for re-authentication
+     * @param newPw new password characters
+     * @param confirm confirmation of the new password
+     */
     public String changePasswordFor(User actor, String targetUsername, char[] actorPw, char[] newPw, char[] confirm) {
         try {
             if (actor == null || actorPw == null || targetUsername == null) {
@@ -199,6 +218,7 @@ public class AuthService {
         }
     }
 
+    /** Returns true if the account does not exist or holds an inactive/disabled role. */
     public boolean isAccountDisabled(String username) {
         try {
             User u = db.getUserByUsername(username);
@@ -210,6 +230,7 @@ public class AuthService {
     }
 
     
+    /** Seeds default role accounts with salted PBKDF2 hashes when the users table is empty. */
     public static void seedDefaultAccountsIfEmpty(SQLite db) {
         try {
             if (db.countUsers() > 0) {

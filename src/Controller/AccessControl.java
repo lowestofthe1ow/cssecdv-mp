@@ -70,10 +70,16 @@ public final class AccessControl {
 
     private AccessControl() {}
 
+    /** Binds the database handle used for fresh role lookups. */
     public static void init(SQLite sqlite) {
         db = sqlite;
     }
 
+    /**
+     * Returns true if the given role code is permitted to access the resource.
+     * @param role role code (2-5)
+     * @param resource resource constant from {@link AccessControl}
+     */
     public static boolean roleAllowed(int role, String resource) {
         int[] allowed = RULES.get(resource);
         if (allowed == null) {
@@ -87,6 +93,7 @@ public final class AccessControl {
         return false;
     }
 
+    /** Queries the database for the user's current active role (2-5), or 0 if inactive/invalid. */
     public static int currentRole(User user) {
         try {
             if (db == null || user == null || user.getUsername() == null) {
@@ -104,6 +111,11 @@ public final class AccessControl {
         }
     }
 
+    /**
+     * Checks whether the user currently holds a role allowed for the resource without logging.
+     * @param user authenticated session user
+     * @param resource resource constant from {@link AccessControl}
+     */
     public static boolean isAllowed(User user, String resource) {
         try {
             return roleAllowed(currentRole(user), resource);
@@ -113,10 +125,16 @@ public final class AccessControl {
         }
     }
 
+    /** Returns true if the user's account is active (role 2-5). */
     public static boolean isActive(User user) {
         return currentRole(user) != 0;
     }
 
+    /**
+     * Enforces access control for a resource and logs an ACCESS_DENIED event on failure.
+     * @param user authenticated session user
+     * @param resource resource constant from {@link AccessControl}
+     */
     public static boolean check(User user, String resource) {
         boolean ok = isAllowed(user, resource);
         if (!ok) {
@@ -126,6 +144,7 @@ public final class AccessControl {
         return ok;
     }
 
+    /** Resolves the home panel card name for the user's role, or logs and returns null if unauthorized. */
     public static String homePanelFor(User user) {
         int role = currentRole(user);
         String panel = null;
